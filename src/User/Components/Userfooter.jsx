@@ -413,7 +413,7 @@ const UserFooter = () => {
             <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600, marginRight: 4 }}>Follow Us</span>
 
             {/* Facebook */}
-            <a href="https://www.facebook.com/people/cpna-foods/61593679281358/" target="_blank" rel="noopener noreferrer" className="uf-social-btn" style={{ background: '#1877f2', width: 32, height: 32 }}>
+            <a href="https://www.facebook.com/cpnafoods/" target="_blank" rel="noopener noreferrer" className="uf-social-btn" style={{ background: '#1877f2', width: 32, height: 32 }}>
               <svg viewBox="0 0 24 24" fill="white" width="15" height="15">
                 <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
               </svg>
@@ -427,7 +427,7 @@ const UserFooter = () => {
             </a> */}
 
             {/* Instagram */}
-            <a href="https://instagram.com/thecpnafoods" target="_blank" rel="noopener noreferrer" className="uf-social-btn" style={{ background: 'radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%)', width: 32, height: 32 }}>
+            <a href="https://www.instagram.com/cpna_foodstuffs/" target="_blank" rel="noopener noreferrer" className="uf-social-btn" style={{ background: 'radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%)', width: 32, height: 32 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                 <circle cx="12" cy="12" r="4" />
