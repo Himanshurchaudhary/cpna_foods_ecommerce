@@ -15,7 +15,7 @@ const getImage = (prod) =>
   prod?.thumbnail || prod?.additionalImages?.[0] || null;
 
 const formatPrice = (n) =>
-  typeof n === 'number' ? `₹${n.toFixed(2)}` : '—';
+  typeof n === 'number' ? `⃃${n.toFixed(2)}` : '—';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 const Toast = ({ message, type, onDone }) => {

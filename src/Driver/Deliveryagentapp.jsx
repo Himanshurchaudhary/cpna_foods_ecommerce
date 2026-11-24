@@ -572,7 +572,7 @@ function OrderCard({ order, onClick }) {
           <p className="text-xs text-gray-400 mt-0.5">📞 {order.shippingAddress?.phone}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="font-bold text-gray-900 text-sm">₹{order.total?.toLocaleString()}</p>
+          <p className="font-bold text-gray-900 text-sm">⃃{order.total?.toLocaleString()}</p>
           <p className="text-xs text-gray-400 mt-0.5">{order.items?.length} item{order.items?.length !== 1 ? "s" : ""}</p>
           <svg className="w-4 h-4 text-gray-300 group-hover:text-orange-400 transition mt-2 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1019,7 +1019,7 @@ function OrderDetail({ orderId, onBack }) {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                    <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{item.price?.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">Qty: {item.quantity} × ⃃{item.price?.toLocaleString()}</p>
                     {item.variantLabel && (
                       <span style={{
                         display: "inline-block", marginTop: 3,
@@ -1032,7 +1032,7 @@ function OrderDetail({ orderId, onBack }) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm font-semibold text-gray-800 flex-shrink-0">₹{item.total?.toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-gray-800 flex-shrink-0">⃃{item.total?.toLocaleString()}</p>
                 </div>
               ))}
             </div>
@@ -1047,7 +1047,7 @@ function OrderDetail({ orderId, onBack }) {
               {order.tax > 0 && <PricingRow label="Tax" value={order.tax} />}
               <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between">
                 <span className="font-semibold text-gray-900 text-sm">Total</span>
-                <span className="font-bold text-gray-900">₹{order.total?.toLocaleString()}</span>
+                <span className="font-bold text-gray-900">⃃{order.total?.toLocaleString()}</span>
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2 flex-wrap">
@@ -1183,7 +1183,7 @@ function PricingRow({ label, value, isDiscount }) {
     <div className="flex justify-between text-sm">
       <span className="text-gray-500">{label}</span>
       <span className={isDiscount ? "text-green-600 font-medium" : "text-gray-700"}>
-        {isDiscount ? `−₹${Math.abs(value).toLocaleString()}` : `₹${value?.toLocaleString()}`}
+        {isDiscount ? `−⃃${Math.abs(value).toLocaleString()}` : `⃃${value?.toLocaleString()}`}
       </span>
     </div>
   );

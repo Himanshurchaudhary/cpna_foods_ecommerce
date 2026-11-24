@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-const toINR = (val) => `₹${Number(val || 0).toFixed(2)}`;
+const toINR = (val) => `⃃${Number(val || 0).toFixed(2)}`;
 
 const API_URL = import.meta.env.VITE_API_URL;
 const getToken = () => localStorage.getItem("adminToken");
@@ -613,8 +613,8 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onStatu
                               <td style={{ padding: "11px 8px", fontSize: 13, color: "#374151", textAlign: "center" }}>{item.shop || order.shopName || "My Shop"}</td>
                               <td style={{ padding: "11px 8px", fontSize: 13, textAlign: "center", color: "#374151" }}>{item.quantity}</td>
                               <td style={{ padding: "11px 8px", fontSize: 13, textAlign: "center", color: "#374151" }}>{item.unit || "PCS"}</td>
-                              <td style={{ padding: "11px 8px", fontSize: 13, textAlign: "center", color: "#374151" }}>₹{Number(item.price || 0).toFixed(2)}</td>
-                              <td style={{ padding: "11px 8px", fontSize: 13, textAlign: "center", fontWeight: 700, color: "#111827" }}>₹{Number(item.total || 0).toFixed(2)}</td>
+                              <td style={{ padding: "11px 8px", fontSize: 13, textAlign: "center", color: "#374151" }}>⃃{Number(item.price || 0).toFixed(2)}</td>
+                              <td style={{ padding: "11px 8px", fontSize: 13, textAlign: "center", fontWeight: 700, color: "#111827" }}>⃃{Number(item.total || 0).toFixed(2)}</td>
                             </tr>
                           ))
                           : (
@@ -637,7 +637,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onStatu
                   {/* Payment Summary */}
                   {[
                     { label: "Sub Total", value: toINR(order?.subtotal) },
-                    { label: "Coupon Discount", value: `-₹${Number(order?.couponDiscount || 0).toFixed(2)}` },
+                    { label: "Coupon Discount", value: `-⃃${Number(order?.couponDiscount || 0).toFixed(2)}` },
                     { label: "Delivery Charge", value: toINR(order?.shippingCharge) },
                   ].map((row, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid #f3f4f6", fontSize: 13, color: "#6b7280" }}>
@@ -670,7 +670,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onStatu
                               {t.taxName}
                               <span style={{ fontSize: 10, background: "#e5e7eb", color: "#374151", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>{t.percentage}%</span>
                             </span>
-                            <span style={{ fontWeight: 500, color: "#374151" }}>₹{amount}</span>
+                            <span style={{ fontWeight: 500, color: "#374151" }}>⃃{amount}</span>
                           </div>
                         );
                       })}

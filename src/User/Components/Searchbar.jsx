@@ -480,7 +480,7 @@ export default function SearchBar({ placeholder = "Search products or categories
                               <div className="sg-item-sub">{catName}</div>
                             )}
                           </div>
-                          <div className="sg-item-price">₹{price.toFixed(2)}</div>
+                          <div className="sg-item-price">⃃{price.toFixed(2)}</div>
                         </button>
                       );
                     })}

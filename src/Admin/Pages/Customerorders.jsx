@@ -148,7 +148,7 @@ const CustomerOrders = () => {
                         { label: 'Total Orders',  value: filtered.length,                       color: 'bg-blue-50 text-blue-700' },
                         { label: 'Delivered',      value: delivered,                             color: 'bg-green-50 text-green-700' },
                         { label: 'Pending',        value: pending,                               color: 'bg-yellow-50 text-yellow-700' },
-                        { label: 'Total Spent',    value: `₹${totalSpent.toLocaleString()}`,    color: 'bg-purple-50 text-purple-700' },
+                        { label: 'Total Spent',    value: `⃃${totalSpent.toLocaleString()}`,    color: 'bg-purple-50 text-purple-700' },
                     ].map(({ label, value, color }) => (
                         <div key={label} className={`rounded-xl p-4 ${color}`}>
                             <p className="text-xs font-medium opacity-70 mb-1">{label}</p>
@@ -295,7 +295,7 @@ const CustomerOrders = () => {
                                         {order.totalItems ?? order.items?.length ?? '—'}
                                     </td>
                                     <td className="px-4 py-3 font-bold text-gray-800">
-                                        ₹{Number(order.totalAmount || order.total || 0).toLocaleString()}
+                                        ⃃{Number(order.totalAmount || order.total || 0).toLocaleString()}
                                     </td>
                                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                                         {new Date(order.createdAt).toLocaleDateString('en-IN', {

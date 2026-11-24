@@ -190,7 +190,7 @@ function OrderSuccess({ order, onDone }) {
         <div style={{ background: "#f8faf8", borderRadius: 14, padding: "16px 18px", marginBottom: 24, textAlign: "left" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={{ fontSize: 13, color: "#6b7280" }}>Total Paid</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: "#1a2332" }}>₹{Number(order?.total ?? 0).toFixed(2)}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#1a2332" }}>⃃{Number(order?.total ?? 0).toFixed(2)}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontSize: 13, color: "#6b7280" }}>Payment</span>
@@ -224,23 +224,23 @@ function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, 
 
   return (
     <div>
-      <Row label="Subtotal" value={`₹${subtotal.toFixed(2)}`} />
+      <Row label="Subtotal" value={`⃃${subtotal.toFixed(2)}`} />
 
       {couponDiscount > 0 && <>
-        <Row label="Coupon Discount" value={`-₹${couponDiscount.toFixed(2)}`} valueColor="#ef4444" />
-        <Row label="After Discount" value={`₹${taxableAmount.toFixed(2)}`} />
+        <Row label="Coupon Discount" value={`-⃃${couponDiscount.toFixed(2)}`} valueColor="#ef4444" />
+        <Row label="After Discount" value={`⃃${taxableAmount.toFixed(2)}`} />
       </>}
 
       <Row
         label={<span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <Truck size={12} color="#9ca3af" /> Shipping
         </span>}
-        value={deliveryLoading ? <Spinner size={12} /> : shippingCharge === 0 ? "Free" : `₹${shippingCharge.toFixed(2)}`}
+        value={deliveryLoading ? <Spinner size={12} /> : shippingCharge === 0 ? "Free" : `⃃${shippingCharge.toFixed(2)}`}
         valueColor={shippingCharge === 0 ? "#16a34a" : undefined}
       />
 
       {taxRate === 0 ? (
-        <Row label="Tax" value="₹0.00" />
+        <Row label="Tax" value="⃃0.00" />
       ) : taxList.length === 1 ? (
         <Row
           label={
@@ -254,7 +254,7 @@ function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, 
               </span>
             </span>
           }
-          value={`₹${tax.toFixed(2)}`}
+          value={`⃃${tax.toFixed(2)}`}
         />
       ) : (
         <>
@@ -274,7 +274,7 @@ function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, 
                     </span>
                   </span>
                 }
-                value={`₹${amount.toFixed(2)}`}
+                value={`⃃${amount.toFixed(2)}`}
               />
             );
           })}
@@ -290,7 +290,7 @@ function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, 
                 </span>
               </span>
             }
-            value={`₹${tax.toFixed(2)}`}
+            value={`⃃${tax.toFixed(2)}`}
             valueColor="#374151"
           />
         </>
@@ -298,7 +298,7 @@ function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, 
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, marginTop: 4 }}>
         <span style={{ fontSize: 15, fontWeight: 800, color: "#1a2332" }}>Total Payable</span>
-        <span style={{ fontSize: 22, fontWeight: 800, color: "#1a2332" }}>₹{total.toFixed(2)}</span>
+        <span style={{ fontSize: 22, fontWeight: 800, color: "#1a2332" }}>⃃{total.toFixed(2)}</span>
       </div>
     </div>
   );
@@ -323,7 +323,7 @@ function CouponSection({ couponApplied, couponCode, setCouponCode, couponError, 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <CheckCircle size={14} color="#16a34a" />
             <span style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>{couponApplied.couponCode}</span>
-            <span style={{ fontSize: 12, color: "#6b7280" }}>–₹{couponDiscount.toFixed(2)} off</span>
+            <span style={{ fontSize: 12, color: "#6b7280" }}>–⃃{couponDiscount.toFixed(2)} off</span>
           </div>
           <button onClick={removeCoupon} style={{
             background: "none", border: "none", cursor: "pointer",
@@ -833,7 +833,7 @@ export default function Checkout() {
                       </div>
                     </div>
                     <span style={{ fontSize: 14, fontWeight: 800, color: "#16a34a", whiteSpace: "nowrap" }}>
-                      ₹{(price * qty).toFixed(2)}
+                      ⃃{(price * qty).toFixed(2)}
                     </span>
                   </div>
                 );
@@ -1002,7 +1002,7 @@ export default function Checkout() {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginBottom: 2 }}>Total Payable</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#1a2332", lineHeight: 1 }}>
-                ₹{total.toFixed(2)}
+                ⃃{total.toFixed(2)}
               </div>
               {shippingCharge === 0 && (
                 <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 600, marginTop: 2 }}>

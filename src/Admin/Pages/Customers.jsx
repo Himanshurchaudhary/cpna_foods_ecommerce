@@ -352,7 +352,7 @@ const Customers = () => {
                                                     {order.totalItems ?? order.items?.length ?? '—'}
                                                 </td>
                                                 <td className="px-3 py-3 font-semibold text-gray-800 whitespace-nowrap">
-                                                    ₹{Number(order.totalAmount || order.total || 0).toLocaleString()}
+                                                    ⃃{Number(order.totalAmount || order.total || 0).toLocaleString()}
                                                 </td>
                                                 <td className="px-3 py-3 text-gray-500 whitespace-nowrap">
                                                     {new Date(order.createdAt).toLocaleDateString()}
@@ -372,7 +372,7 @@ const Customers = () => {
                                 <span>
                                     Total spent:{' '}
                                     <strong className="text-gray-800">
-                                        ₹{orders.reduce((sum, o) => sum + Number(o.totalAmount || o.total || 0), 0).toLocaleString()}
+                                        ⃃{orders.reduce((sum, o) => sum + Number(o.totalAmount || o.total || 0), 0).toLocaleString()}
                                     </strong>
                                 </span>
                             </div>

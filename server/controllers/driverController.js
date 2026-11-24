@@ -549,7 +549,7 @@ exports.confirmPayment = async (req, res) => {
 
         res.json({
             success: true,
-            message: `Payment of ₹${order.total} collected via ${paymentMode}. Order fully completed!`,
+            message: `Payment of ⃃${order.total} collected via ${paymentMode}. Order fully completed!`,
             order:   updated,
         });
 
@@ -560,7 +560,7 @@ exports.confirmPayment = async (req, res) => {
                 const customerEmail = order.shippingAddress?.email;
                 const message =
                     `Hello ${customerName || 'Customer'}!\n\n` +
-                    `Payment of ₹${order.total} for order #${order.id} received via ${paymentMode}.\n` +
+                    `Payment of ⃃${order.total} for order #${order.id} received via ${paymentMode}.\n` +
                     `Thank you for shopping with OrchardEngine!\n– theorchardengine Team`;
                 await sendNotification({ phone: customerPhone, email: customerEmail, subject: 'Payment Received', message, html: message });
                 if (customerPhone) await sendSms(customerPhone, message);

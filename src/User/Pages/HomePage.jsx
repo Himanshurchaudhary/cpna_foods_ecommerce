@@ -1206,10 +1206,10 @@ const ProductCard = ({ product }) => {
           {/* Price */}
           <div className="pc-price-row">
             <span className="pc-price-new" style={{ fontSize: isMobile ? 15 : 17 }}>
-              ₹{price.toFixed(2)}
+              ⃃{price.toFixed(2)}
             </span>
             {oldPrice > 0 && (
-              <span className="pc-price-old">₹{oldPrice.toFixed(2)}</span>
+              <span className="pc-price-old">⃃{oldPrice.toFixed(2)}</span>
             )}
             <span className="pc-unit">{unit}</span>
           </div>

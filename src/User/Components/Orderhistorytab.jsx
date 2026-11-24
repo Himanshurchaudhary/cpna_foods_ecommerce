@@ -439,7 +439,7 @@ const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
                     {item.name}
                   </div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>
-                    {item.quantity} × ₹{Number(item.price || 0).toFixed(2)}
+                    {item.quantity} × ⃃{Number(item.price || 0).toFixed(2)}
                   </div>
                   {/* ✅ Variant badge */}
                   {item.variantLabel && (
@@ -454,7 +454,7 @@ const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
                   )}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#111", flexShrink: 0 }}>
-                  ₹{Number(item.total || (item.price * item.quantity) || 0).toFixed(2)}
+                  ⃃{Number(item.total || (item.price * item.quantity) || 0).toFixed(2)}
                 </div>
               </div>
             ))}
@@ -468,13 +468,13 @@ const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
           <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? "14px 16px" : "18px 22px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
             <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: "#111" }}>Order Summary</h3>
             <SummaryRow label="Items" value={order.items?.reduce((s, i) => s + i.quantity, 0) || 0} />
-            <SummaryRow label="Subtotal" value={`₹${Number(order.subtotal || 0).toFixed(2)}`} />
-            <SummaryRow label="Discount" value={`-₹${Number(order.discount || 0).toFixed(2)}`} valueColor="#ef4444" />
-            <SummaryRow label="Shipping Charge" value={`₹${Number(order.shippingCharge || 0).toFixed(2)}`} />
-            {order.tax > 0 && <SummaryRow label="Tax" value={`₹${Number(order.tax).toFixed(2)}`} />}
+            <SummaryRow label="Subtotal" value={`⃃${Number(order.subtotal || 0).toFixed(2)}`} />
+            <SummaryRow label="Discount" value={`-⃃${Number(order.discount || 0).toFixed(2)}`} valueColor="#ef4444" />
+            <SummaryRow label="Shipping Charge" value={`⃃${Number(order.shippingCharge || 0).toFixed(2)}`} />
+            {order.tax > 0 && <SummaryRow label="Tax" value={`⃃${Number(order.tax).toFixed(2)}`} />}
             <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 10, marginTop: 4, display: "flex", justifyContent: "space-between" }}>
               <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>Total Amount</span>
-              <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>₹{Number(order.total || 0).toFixed(2)}</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: "#111" }}>⃃{Number(order.total || 0).toFixed(2)}</span>
             </div>
 
             {/* Payment Method */}
@@ -628,7 +628,7 @@ const OrderListItem = ({ order, onView }) => {
           <div style={{ display: "flex", gap: 14 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>QTY: {qty}</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>
-              ₹<span style={{ color: "#16a34a" }}>{Number(order.total || 0).toFixed(2)}</span>
+              ⃃<span style={{ color: "#16a34a" }}>{Number(order.total || 0).toFixed(2)}</span>
             </span>
           </div>
           <button onClick={() => onView(order.id)} style={{
@@ -662,7 +662,7 @@ const OrderListItem = ({ order, onView }) => {
       </div>
       <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", flexShrink: 0 }}>QTY: {qty}</div>
       <div style={{ fontSize: 14, fontWeight: 700, color: "#111", flexShrink: 0 }}>
-        Amount: <span style={{ color: "#16a34a" }}>₹{Number(order.total || 0).toFixed(2)}</span>
+        Amount: <span style={{ color: "#16a34a" }}>⃃{Number(order.total || 0).toFixed(2)}</span>
       </div>
       <span style={{
         fontSize: 12, fontWeight: 700, padding: "5px 14px", borderRadius: 20, flexShrink: 0,

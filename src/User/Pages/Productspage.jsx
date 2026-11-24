@@ -99,9 +99,9 @@ const PriceSlider = ({ min, max, value, onChange }) => {
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-        <span style={{ fontSize:12, color:"#888" }}>₹{min}</span>
-        <span style={{ fontSize:13, fontWeight:700, color:"#2d9e2d" }}>Up to ₹{localVal}</span>
-        <span style={{ fontSize:12, color:"#888" }}>₹{max}</span>
+        <span style={{ fontSize:12, color:"#888" }}>⃃{min}</span>
+        <span style={{ fontSize:13, fontWeight:700, color:"#2d9e2d" }}>Up to ⃃{localVal}</span>
+        <span style={{ fontSize:12, color:"#888" }}>⃃{max}</span>
       </div>
       <div style={{ position:"relative", height:24, display:"flex", alignItems:"center" }}>
         <div style={{ position:"absolute", left:0, right:0, height:4, background:"#e8e8e8", borderRadius:2 }}/>
@@ -202,8 +202,8 @@ const ProductCard = ({ product, view = "grid", isMobile = false, onUnwish }) => 
             <span style={{ fontSize:10, color:"#999" }}>({reviews})</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:"auto", paddingTop:4 }}>
-            <span style={{ fontSize:isMobile?15:18, fontWeight:800, color:"#2d9e2d" }}>₹{price.toFixed(2)}</span>
-            {oldPrice > 0 && oldPrice !== price && <span style={{ fontSize:10, color:"#ccc", textDecoration:"line-through" }}>₹{oldPrice.toFixed(2)}</span>}
+            <span style={{ fontSize:isMobile?15:18, fontWeight:800, color:"#2d9e2d" }}>⃃{price.toFixed(2)}</span>
+            {oldPrice > 0 && oldPrice !== price && <span style={{ fontSize:10, color:"#ccc", textDecoration:"line-through" }}>⃃{oldPrice.toFixed(2)}</span>}
           </div>
         </div>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", justifyContent:"space-between", flexShrink:0, gap:6 }}>
@@ -279,8 +279,8 @@ const ProductCard = ({ product, view = "grid", isMobile = false, onUnwish }) => 
           {!inStock ? "❌ Out of Stock" : isLowStock ? `⚠️ Only ${stock} left` : "✅ In Stock"}
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:"auto", paddingTop:4 }}>
-          <span style={{ fontSize:isMobile?14:16, fontWeight:800, color:"#2d9e2d" }}>₹{price.toFixed(2)}</span>
-          {oldPrice > 0 && oldPrice !== price && <span style={{ fontSize:10, color:"#ccc", textDecoration:"line-through" }}>₹{oldPrice.toFixed(2)}</span>}
+          <span style={{ fontSize:isMobile?14:16, fontWeight:800, color:"#2d9e2d" }}>⃃{price.toFixed(2)}</span>
+          {oldPrice > 0 && oldPrice !== price && <span style={{ fontSize:10, color:"#ccc", textDecoration:"line-through" }}>⃃{oldPrice.toFixed(2)}</span>}
         </div>
         <button onClick={handleAddToCart} disabled={!inStock} style={{
           width:"100%", padding:isMobile?"8px 0":"9px 0",
@@ -778,7 +778,7 @@ export default function ProductsPage() {
         ? { key:`cat-${id}`, label:cat.name, remove:() => { setSelectedCats(s => s.filter(x => x !== id)); resetPage(); } }
         : null;
     }).filter(Boolean),
-    maxPrice < priceMax ? { key:"price", label:`Under ₹${maxPrice}`, remove:() => { setMaxPrice(priceMax); resetPage(); } } : null,
+    maxPrice < priceMax ? { key:"price", label:`Under ⃃${maxPrice}`, remove:() => { setMaxPrice(priceMax); resetPage(); } } : null,
     minRating   ? { key:"rating",   label:`${minRating}★+`,   remove:() => { setMinRating(null);   resetPage(); } } : null,
     minDiscount ? { key:"discount", label:`${minDiscount}%+ off`, remove:() => { setMinDiscount(null); resetPage(); } } : null,
     inStockOnly ? { key:"stock",    label:"In Stock",          remove:() => { setInStockOnly(false); resetPage(); } } : null,

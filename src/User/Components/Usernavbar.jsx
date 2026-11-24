@@ -434,7 +434,7 @@ const SuggestionDropdown = ({ loading, hasResults, query, suggestions, allSugges
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><Highlight text={prod.name || ''} query={query} /></div>
                       {cat && <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>{cat}</div>}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#2d9e2d', flexShrink: 0 }}>₹{price.toFixed(2)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#2d9e2d', flexShrink: 0 }}>⃃{price.toFixed(2)}</div>
                   </button>
                 );
               })}
@@ -651,7 +651,7 @@ const UserNavbar = () => {
 
             {/* Currency selector */}
             <button className="rg-lang-btn">
-              <span style={{ fontSize: 13 }}>₹</span>
+              <span style={{ fontSize: 13 }}>⃃</span>
               <span>INR</span>
               <ChevronDown size={13} />
             </button>

@@ -110,7 +110,7 @@ export default function ProductList() {
   const pageNumbers = [];
   for (let i = 1; i <= Math.min(totalPages, 5); i++) pageNumbers.push(i);
 
-  const fmt = (v) => (v && v > 0 ? `₹${v}` : '$0');
+  const fmt = (v) => (v && v > 0 ? `⃃${v}` : '$0');
   const from = (page - 1) * PER_PAGE + 1;
   const to = Math.min(page * PER_PAGE, filtered.length);
 

@@ -43,7 +43,7 @@ function PrepaidConfirmation({ order, onDone }) {
       <div className="bg-gray-50 rounded-2xl p-4">
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">Order Total</span>
-          <span className="text-lg font-bold text-gray-900">₹{order.total?.toLocaleString()}</span>
+          <span className="text-lg font-bold text-gray-900">⃃{order.total?.toLocaleString()}</span>
         </div>
         <div className="flex justify-between items-center mt-1.5">
           <span className="text-xs text-gray-400">Payment Status</span>
@@ -98,7 +98,7 @@ function CashPaymentOption({ order, token, onSuccess, onError }) {
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-900">Cash</p>
-          <p className="text-xs text-gray-500">Collect ₹{order.total?.toLocaleString()} in cash from customer</p>
+          <p className="text-xs text-gray-500">Collect ⃃{order.total?.toLocaleString()} in cash from customer</p>
         </div>
       </div>
       <button
@@ -244,7 +244,7 @@ function CODPaymentCollection({ order, token, onSuccess, onError }) {
         <div>
           <p className="text-sm font-semibold text-orange-800">Collect Payment from Customer</p>
           <p className="text-xs text-orange-600 mt-0.5">
-            Amount due: <span className="font-bold">₹{order.total?.toLocaleString()}</span>
+            Amount due: <span className="font-bold">⃃{order.total?.toLocaleString()}</span>
           </p>
         </div>
       </div>
@@ -310,7 +310,7 @@ export default function DeliveryConfirmationScreen({ order: initialOrder, token,
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-400">Total</p>
-          <p className="text-sm font-bold text-gray-900">₹{order.total?.toLocaleString()}</p>
+          <p className="text-sm font-bold text-gray-900">⃃{order.total?.toLocaleString()}</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-400">Method</p>

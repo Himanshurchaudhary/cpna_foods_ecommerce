@@ -166,7 +166,7 @@ exports.placeOrder = async (req, res) => {
         // ── 8. Background notifications ───────────────────────────────────
         fireAndForget(async () => {
             const { subject, html } = orderPlacedEmail(user.fullName, order.id, total, paymentMethod);
-            const message = `Hello ${user.name}! Order #${order.id} placed. Total: ₹${total}. – OrchardEngine`;
+            const message = `Hello ${user.name}! Order #${order.id} placed. Total: ⃃${total}. – OrchardEngine`;
             await sendNotification({ phone: user.phone, email: user.email, subject, message, html });
 
             if (user.phone) {

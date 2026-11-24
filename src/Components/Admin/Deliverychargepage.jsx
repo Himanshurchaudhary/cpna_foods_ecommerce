@@ -103,7 +103,7 @@ const DeliveryForm = ({ initial, onSubmit, loading, onCancel }) => {
           {/* Min Price */}
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1.5">
-              Minimum Order Price (₹) <span className="text-red-500">*</span>
+              Minimum Order Price (⃃) <span className="text-red-500">*</span>
             </label>
             <input
               required
@@ -120,7 +120,7 @@ const DeliveryForm = ({ initial, onSubmit, loading, onCancel }) => {
           {/* Max Price */}
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1.5">
-              Maximum Order Price (₹) <span className="text-red-500">*</span>
+              Maximum Order Price (⃃) <span className="text-red-500">*</span>
             </label>
             <input
               required
@@ -138,7 +138,7 @@ const DeliveryForm = ({ initial, onSubmit, loading, onCancel }) => {
         {/* Charge */}
         <div className="mb-6 md:w-1/2">
           <label className="block text-sm font-medium text-slate-600 mb-1.5">
-            Delivery Charge (₹) <span className="text-red-500">*</span>
+            Delivery Charge (⃃) <span className="text-red-500">*</span>
           </label>
           <input
             required
@@ -260,7 +260,7 @@ export default function DeliveryChargePage() {
 
       {confirmDel && (
         <Confirm
-          msg={`Delete this delivery charge (Min: ₹${confirmDel.minOrderPrice} / Max: ₹${confirmDel.maxOrderPrice})? This cannot be undone.`}
+          msg={`Delete this delivery charge (Min: ⃃${confirmDel.minOrderPrice} / Max: ⃃${confirmDel.maxOrderPrice})? This cannot be undone.`}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDel(null)}
           loading={deleteLoading}
@@ -306,11 +306,11 @@ export default function DeliveryChargePage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["SL", "Min. Order Price (₹)", "Max. Order Price (₹)", "Charge (₹)", "Action"].map((h) => (
+                {["SL", "Min. Order Price (⃃)", "Max. Order Price (⃃)", "Charge (⃃)", "Action"].map((h) => (
                   <th
                     key={h}
                     className={`px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-gray-100
-                      ${h === "Action" || h === "Charge (₹)" ? "text-center" : "text-left"}`}
+                      ${h === "Action" || h === "Charge (⃃)" ? "text-center" : "text-left"}`}
                   >
                     {h}
                   </th>
@@ -334,9 +334,9 @@ export default function DeliveryChargePage() {
                 charges.map((row, i) => (
                   <tr key={row.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                     <td className="px-6 py-4 text-slate-600">{i + 1}.</td>
-                    <td className="px-6 py-4 text-slate-700 font-medium text-center">₹{row.minOrderPrice}</td>
-                    <td className="px-6 py-4 text-slate-700 font-medium text-center">₹{row.maxOrderPrice}</td>
-                    <td className="px-6 py-4 text-slate-700 font-medium text-center">₹{row.charge}</td>
+                    <td className="px-6 py-4 text-slate-700 font-medium text-center">⃃{row.minOrderPrice}</td>
+                    <td className="px-6 py-4 text-slate-700 font-medium text-center">⃃{row.maxOrderPrice}</td>
+                    <td className="px-6 py-4 text-slate-700 font-medium text-center">⃃{row.charge}</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-3">
                         {/* Edit */}

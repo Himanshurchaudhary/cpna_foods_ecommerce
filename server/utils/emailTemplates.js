@@ -26,7 +26,7 @@ exports.orderPlacedEmail = (name, orderId, total, paymentMethod) => ({
       <p>Your order has been placed successfully.</p>
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;">
         <p style="margin:0;"><strong>Order ID</strong> : #${orderId}</p>
-        <p style="margin:6px 0 0;"><strong>Total</strong>    : ₹${total}</p>
+        <p style="margin:6px 0 0;"><strong>Total</strong>    : ⃃${total}</p>
         <p style="margin:6px 0 0;"><strong>Payment</strong>  : ${paymentMethod}</p>
       </div>
       <p style="color:#6b7280;font-size:13px;">We'll notify you once your order is shipped.</p>
