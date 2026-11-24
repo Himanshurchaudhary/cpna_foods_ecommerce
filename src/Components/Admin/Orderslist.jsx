@@ -250,7 +250,7 @@ export default function OrdersList() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Total Orders", value: total, icon: Package, color: "#1a2332" },
-            { label: "Page Revenue", value: `⃃${totalRevenue.toFixed(2)}`, icon: DollarSign, color: "#16a34a" },
+            { label: "Page Revenue", value: `AED${totalRevenue.toFixed(2)}`, icon: DollarSign, color: "#16a34a" },
             { label: "Paid Orders", value: paidCount, icon: CheckCircle, color: "#16a34a" },
             { label: "Pending Orders", value: pendingCount, icon: Clock, color: "#d97706" },
           ].map((s, i) => (
@@ -543,7 +543,7 @@ export default function OrdersList() {
                       <td style={td}>
                         <span style={{ fontWeight: 800, fontSize: 14, color: "#1a2332" }}>
 
-                          ⃃{parseFloat(order.total || 0).toFixed(2)}    
+                          AED{parseFloat(order.total || 0).toFixed(2)}    
                         </span>
                         {order.couponDiscount > 0 && (
                           <p style={{ margin: 0, fontSize: 11, color: "#ef4444" }}>

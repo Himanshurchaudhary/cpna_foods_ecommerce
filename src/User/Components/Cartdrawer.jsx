@@ -59,9 +59,9 @@ function CartItem({ item, onQtyChange, onRemove, updating, removing }) {
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>⃃{price.toFixed(2)}</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>AED{price.toFixed(2)}</span>
             {oldPrice > 0 && oldPrice > price && (
-              <span style={{ fontSize: 11, color: "#bbb", textDecoration: "line-through" }}>⃃{oldPrice.toFixed(2)}</span>
+              <span style={{ fontSize: 11, color: "#bbb", textDecoration: "line-through" }}>AED{oldPrice.toFixed(2)}</span>
             )}
             {discount && (
               <span style={{ fontSize: 9, fontWeight: 800, background: "#fef2f2", color: "#ef4444",
@@ -296,7 +296,7 @@ export default function CartDrawer({ open, onClose }) {
               <span style={{ fontSize: 13, color: "#6b7280", fontWeight: 500 }}>
                 Subtotal ({itemCount} item{itemCount !== 1 ? "s" : ""})
               </span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: "#1a2332" }}>⃃{total.toFixed(2)}</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: "#1a2332" }}>AED{total.toFixed(2)}</span>
             </div>
             <button className="cart-checkout-btn" onClick={() => { onClose(); navigate("/user/checkout"); }}>
               Proceed to Checkout <ArrowRight size={16} />

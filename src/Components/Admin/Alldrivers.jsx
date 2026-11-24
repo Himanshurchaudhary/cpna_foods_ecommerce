@@ -309,7 +309,7 @@ function ViewDriver({ driverId, onBack, onEdit }) {
           <InfoField label="Identity Type" value={driver.identityType} />
           <InfoField label="Identity Number" value={driver.identityNumber} />
           <InfoField label="Total Orders Delivered" value={driver.totalOrdersDelivered} />
-          <InfoField label="Total Earnings" value={`⃃${driver.totalEarnings}`} />
+          <InfoField label="Total Earnings" value={`AED${driver.totalEarnings}`} />
           <InfoField label="Rating" value={`⭐ ${driver.rating} / 5`} />
           <InfoField
             label="Online Status"

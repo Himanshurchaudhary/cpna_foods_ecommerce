@@ -43,7 +43,7 @@ const C = {
 const PIE_COLORS = [C.emerald, C.blue, C.violet, C.amber, C.rose];
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
-const fmtINR  = (v) => `⃃${Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+const fmtINR  = (v) => `AED${Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 const fmtDate = (d) => {
   const [year, month, day] = d.split('-');
   return new Date(year, month - 1, day).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
@@ -413,7 +413,7 @@ export default function AdminLay() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                     <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10, fill: C.muted }} tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={v => `⃃${v >= 1000 ? (v/1000).toFixed(0)+"k" : v}`} tick={{ fontSize: 10, fill: C.muted }} tickLine={false} axisLine={false} width={50} />
+                    <YAxis tickFormatter={v => `AED${v >= 1000 ? (v/1000).toFixed(0)+"k" : v}`} tick={{ fontSize: 10, fill: C.muted }} tickLine={false} axisLine={false} width={50} />
                     <Tooltip content={<ChartTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                     <Area type="monotone" dataKey="revenue"   name="Revenue"   stroke={C.emerald} strokeWidth={2} fill="url(#revGrad)" dot={false} />

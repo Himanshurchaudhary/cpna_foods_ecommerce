@@ -367,8 +367,8 @@ const ProductCard = ({ product, discountBadge, compact = false }) => {
         <div className="fs-divider" />
 
         <div className="fs-price-row">
-          <span className="fs-price" style={{ fontSize: compact ? 14 : 16 }}>⃃{price.toFixed(2)}</span>
-          {oldPrice > 0 && <span className="fs-oldprice">⃃{oldPrice.toFixed(2)}</span>}
+          <span className="fs-price" style={{ fontSize: compact ? 14 : 16 }}>AED{price.toFixed(2)}</span>
+          {oldPrice > 0 && <span className="fs-oldprice">AED{oldPrice.toFixed(2)}</span>}
           <span className="fs-unit">{unit}</span>
         </div>
 

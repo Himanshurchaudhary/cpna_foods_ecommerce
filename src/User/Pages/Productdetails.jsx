@@ -624,11 +624,11 @@ export default function ProductDetails() {
               {/* Price — variant se aayegi */}
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
                 <span style={{ fontSize: isMobile ? 28 : 34, fontWeight: 900, color: "#16a34a" }}>
-                  ⃃{price.toFixed(2)}
+                  AED{price.toFixed(2)}
                 </span>
                 {oldPrice > 0 && oldPrice > price && (
                   <span style={{ fontSize: 16, color: "#9ca3af", textDecoration: "line-through", fontWeight: 500 }}>
-                    ⃃{oldPrice.toFixed(2)}
+                    AED{oldPrice.toFixed(2)}
                   </span>
                 )}
                 {discount && (
@@ -816,7 +816,7 @@ export default function ProductDetails() {
                       ><Plus size={14} /></button>
                     </div>
                     <span style={{ fontSize: 12, color: "#9ca3af" }}>
-                      Total: <strong style={{ color: "#16a34a" }}>⃃{(price * qty).toFixed(2)}</strong>
+                      Total: <strong style={{ color: "#16a34a" }}>AED{(price * qty).toFixed(2)}</strong>
                     </span>
                   </div>
                   {minQty > 1 && (
@@ -961,12 +961,12 @@ export default function ProductDetails() {
                           <div style={{ display: "flex", alignItems: "center",
                             gap: 5, marginTop: 2, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>
-                              ⃃{rPrice.toFixed(2)}
+                              AED{rPrice.toFixed(2)}
                             </span>
                             {rOld && rOld > rPrice && (
                               <span style={{ fontSize: 11, color: "#9ca3af",
                                 textDecoration: "line-through" }}>
-                                ⃃{rOld.toFixed(2)}
+                                AED{rOld.toFixed(2)}
                               </span>
                             )}
                             {rel.unit && (

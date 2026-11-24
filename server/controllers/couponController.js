@@ -130,7 +130,7 @@ exports.validateCoupon = async (req, res) => {
         // Min order check
         if (orderAmount < coupon.minOrderAmount) {
             return res.status(400).json({
-                message: `Min order should be ⃃${coupon.minOrderAmount}`
+                message: `Min order should be AED${coupon.minOrderAmount}`
             });
         }
 

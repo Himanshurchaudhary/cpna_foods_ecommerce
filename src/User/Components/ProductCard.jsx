@@ -501,10 +501,10 @@ const ProductCard = ({ product, onUnwish }) => {
         {/* Price Row */}
         <div className="pc-price-row">
           <span className={`pc-price${isMobile ? " mobile" : ""}`}>
-            ⃃{displayPrice.toLocaleString("en-IN")}
+            AED{displayPrice.toLocaleString("en-IN")}
           </span>
           {strikePrice && (
-            <span className="pc-strike">⃃{strikePrice.toLocaleString("en-IN")}</span>
+            <span className="pc-strike">AED{strikePrice.toLocaleString("en-IN")}</span>
           )}
           {unit ? <span className="pc-unit">{unit}</span> : null}
         </div>

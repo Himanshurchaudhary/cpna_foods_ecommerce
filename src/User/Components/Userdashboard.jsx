@@ -192,7 +192,7 @@ const CartItemRow = ({ item, onQtyChange, onRemove }) => {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: "#111", lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>⃃{price.toFixed(2)}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>AED{price.toFixed(2)}</span>
           {oldPrice && <span style={{ fontSize: 10, color: "#d1d5db", textDecoration: "line-through" }}>${oldPrice.toFixed(2)}</span>}
           {discount && <span style={{ fontSize: 9, fontWeight: 800, background: "#16a34a", color: "#fff", borderRadius: 3, padding: "1px 4px" }}>{discount}% OFF</span>}
         </div>
@@ -238,8 +238,8 @@ const RecentCard = ({ product }) => {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: "#111", lineHeight: 1.3, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#16a34a" }}>⃃{price.toFixed(2)}</span>
-          {oldPrice && <span style={{ fontSize: 10, color: "#d1d5db", textDecoration: "line-through" }}>⃃{oldPrice.toFixed(2)}</span>}
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#16a34a" }}>AED{price.toFixed(2)}</span>
+          {oldPrice && <span style={{ fontSize: 10, color: "#d1d5db", textDecoration: "line-through" }}>AED{oldPrice.toFixed(2)}</span>}
           {discount && <span style={{ fontSize: 9, fontWeight: 800, background: "#ef4444", color: "#fff", borderRadius: 3, padding: "1px 4px" }}>{discount}% OFF</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
@@ -303,8 +303,8 @@ const WishlistCard = ({ product, onRemove, onAddToCart, removing, addingToCart }
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: "#16a34a" }}>⃃{price.toFixed(2)}</span>
-            {hasDiscount && <span style={{ fontSize: 11, color: "#9ca3af", textDecoration: "line-through" }}>⃃{sellingPrice.toFixed(2)}</span>}
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#16a34a" }}>AED{price.toFixed(2)}</span>
+            {hasDiscount && <span style={{ fontSize: 11, color: "#9ca3af", textDecoration: "line-through" }}>AED{sellingPrice.toFixed(2)}</span>}
           </div>
           {unit && <span style={{ fontSize: 11, color: "#6b7280", background: "#f3f4f6", padding: "2px 6px", borderRadius: 5 }}>{unit}</span>}
         </div>
@@ -1090,7 +1090,7 @@ export default function UserDashboard() {
                     <div style={{ padding: "12px 16px", borderTop: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                       <div>
                         <span style={{ fontSize: 12, color: "#6b7280" }}>Cart Amount </span>
-                        <span style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>⃃{cartTotal.toFixed(2)}</span>
+                        <span style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>AED{cartTotal.toFixed(2)}</span>
                       </div>
                       <button onClick={() => navigate("/user/checkout")}
                         style={{ padding: "10px 20px", background: "#16a34a", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
