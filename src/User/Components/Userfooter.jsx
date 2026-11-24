@@ -3,6 +3,12 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
+const BRAND_NAME = 'CPNA Food Stuff';
+const PHONE_DISPLAY = '+971 56 957 5751';
+const WHATSAPP_URL = 'https://wa.me/971569575751';
+const EMAIL = 'Cpnafoodstuff@gmail.com';
+const ADDRESS = 'Al Aweer Vegetables & Fruits Market, Dubai, United Arab Emirates';
+
 const featureBadges = [
   {
     icon: (
@@ -10,8 +16,8 @@ const featureBadges = [
         <path d="M12 2a9 9 0 00-9 9c0 5 9 13 9 13s9-8 9-13a9 9 0 00-9-9z"/><circle cx="12" cy="11" r="3"/>
       </svg>
     ),
-    title: 'Farm Fresh Daily',
-    sub: 'Straight from local farms',
+    title: 'Fresh from India',
+    sub: 'Imported fruits & vegetables',
   },
   {
     icon: (
@@ -19,8 +25,8 @@ const featureBadges = [
         <rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 5v4h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
       </svg>
     ),
-    title: 'EV Cart Delivery',
-    sub: 'Eco-friendly to your door',
+    title: 'Air & Container',
+    sub: 'Fast, reliable shipments',
   },
   {
     icon: (
@@ -29,7 +35,7 @@ const featureBadges = [
       </svg>
     ),
     title: 'Best Prices',
-    sub: 'No middlemen, honest rates',
+    sub: 'Direct from exporters',
   },
   {
     icon: (
@@ -38,7 +44,7 @@ const featureBadges = [
       </svg>
     ),
     title: 'Safe Payments',
-    sub: 'UPI, Card & COD accepted',
+    sub: 'Secure & trusted checkout',
   },
   {
     icon: (
@@ -46,8 +52,8 @@ const featureBadges = [
         <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.68A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
       </svg>
     ),
-    title: '24/7 Support',
-    sub: 'Always here to help',
+    title: 'Always Open',
+    sub: 'Reach us anytime',
   },
 ];
 
@@ -70,7 +76,7 @@ const accountLinks = [
 const corporateLinks = [
   { label: 'Products', href: '/user/product' },
   { label: 'Blogs', href: '/user/blog' },
-  { label: 'Become a Vendor', href: '/user/vendor' },
+  { label: 'Become a Supplier', href: '/user/vendor' },
   { label: 'Affiliate Program', href: '/user/affiliate' },
   { label: 'Promotions', href: '/user/promotions' },
 ];
@@ -80,8 +86,6 @@ const PaymentIcons = () => (
     {[
       { label: 'VISA', color: '#1a1f71', text: '#fff' },
       { label: 'MasterCard', color: '#fff', text: '#333', border: '1px solid #ddd' },
-      { label: 'RuPay', color: '#fff', text: '#007cc3', border: '1px solid #ddd' },
-      { label: 'UPI', color: '#fff', text: '#6b3fa0', border: '1px solid #ddd' },
     ].map(p => (
       <span key={p.label} style={{
         background: p.color,
@@ -223,16 +227,17 @@ const UserFooter = () => {
           align-items: center;
           gap: 10px;
         }
-          .uf-credit-link {
-  color: #22c55e;
-  font-weight: 600;
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.uf-credit-link:hover {
-  color: #4ade80;
-  text-decoration: underline;
-}
+
+        .uf-credit-link {
+          color: #22c55e;
+          font-weight: 600;
+          text-decoration: none;
+          transition: color 0.15s;
+        }
+        .uf-credit-link:hover {
+          color: #4ade80;
+          text-decoration: underline;
+        }
       `}</style>
 
       {/* ══════════════════════════════════════
@@ -263,33 +268,33 @@ const UserFooter = () => {
               style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 16 }}
               onClick={() => navigate('/')}
             >
-              <img src="/UserLogo.png" alt="CPNA FOODs" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 10 }} />
+              <img src="/UserLogo.png" alt={BRAND_NAME} style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 10 }} />
               <div style={{ lineHeight: 1.1 }}>
                 <span style={{ display: 'block', color: '#fff', fontWeight: 800, fontSize: 20, letterSpacing: '-0.5px' }}>CPNA</span>
-                <span style={{ display: 'block', color: '#22c55e', fontWeight: 800, fontSize: 20, letterSpacing: '-0.5px' }}>FOODs</span>
+                <span style={{ display: 'block', color: '#f97316', fontWeight: 800, fontSize: 20, letterSpacing: '-0.5px' }}>Food Stuff</span>
               </div>
             </div>
 
             <p style={{ color: '#9ca3af', fontSize: 13, lineHeight: 1.75, margin: '0 0 20px', maxWidth: 340 }}>
-             The CPNA FOODs Delivery is an eco friendly shopping cart and delivery service that brings Farm fresh fruits and vegetables straight to customer doorstep with an Live EV Cart.
+              {BRAND_NAME} imports fresh fruits and vegetables from India to the UAE by air and container. Fresh, quality and trusted produce, supplied from Al Aweer Market, Dubai.
             </p>
 
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <li style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#9ca3af' }}>
                 <MapPin size={15} color="#22c55e" style={{ flexShrink: 0, marginTop: 1 }} />
-                2752-C-1 , Street no 4 nai basti, Bathinda Punjab , 151001 ,
+                {ADDRESS}
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#9ca3af' }}>
                 <Phone size={15} color="#22c55e" style={{ flexShrink: 0 }} />
-                +91 94636 85829
+                {PHONE_DISPLAY}
               </li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#9ca3af' }}>
+              <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#9ca3af', wordBreak: 'break-all' }}>
                 <Mail size={15} color="#22c55e" style={{ flexShrink: 0 }} />
-                thecpnafoods@gmail.com
+                {EMAIL}
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#9ca3af' }}>
                 <Clock size={15} color="#22c55e" style={{ flexShrink: 0 }} />
-                Hours 9:00 – 20:00, Mon – San
+                Always open
               </li>
             </ul>
           </div>
@@ -344,8 +349,8 @@ const UserFooter = () => {
                 </div>
               </a>
 
-              {/* App Store */}
-              {/* <a href="https://play.google.com/store/apps/details?id=com.kokok1.OrchardKartMobile" className="uf-store-btn" target="_blank" rel="noopener noreferrer">
+              {/* App Store (hidden for now) */}
+              {/* <a href="#" className="uf-store-btn" target="_blank" rel="noopener noreferrer">
                 <svg viewBox="0 0 24 24" fill="white" style={{ width: 22, height: 22, flexShrink: 0 }}>
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.15-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.37 2.78M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
                 </svg>
@@ -373,26 +378,25 @@ const UserFooter = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
             <span style={{ fontSize: 12, color: '#6b7280' }}>© 2026 All rights reserved</span>
             <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#4b5563', display: 'inline-block' }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#d1d5db' }}>CPNA FOODs</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#d1d5db' }}>{BRAND_NAME}</span>
             <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#4b5563', display: 'inline-block' }} />
             <span style={{ fontSize: 12, color: '#6b7280' }}>
-  Design & Development by{' '}
-  <a
-    href="https://andscloud.com/"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="uf-credit-link"
-  >
-    Ands Cloud
-  </a>
-</span>
+              Design & Development by{' '}
+              <a
+                href="https://andscloud.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="uf-credit-link"
+              >
+                Ands Cloud
+              </a>
+            </span>
           </div>
 
-          {/* Phone Numbers */}
+          {/* Contact numbers */}
           <div className="uf-bottom-phones">
             {[
-              { label: 'Working 8:00 – 22:00', num: '+91 94636 85829' },
-              { label: '24/7 Support Center', num: '+91 94636 85829' },
+              { label: 'Call / WhatsApp', num: PHONE_DISPLAY },
             ].map((p) => (
               <div key={p.num + p.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Phone size={15} color="#22c55e" />
@@ -417,10 +421,10 @@ const UserFooter = () => {
 
             {/* Twitter/X — HIDDEN */}
             {/* <a href="#" className="uf-social-btn" style={{ background: '#1d9bf0', width: 32, height: 32 }}>
-    <svg viewBox="0 0 24 24" fill="white" width="15" height="15">
-      <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
-    </svg>
-  </a> */}
+              <svg viewBox="0 0 24 24" fill="white" width="15" height="15">
+                <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
+              </svg>
+            </a> */}
 
             {/* Instagram */}
             <a href="https://instagram.com/thecpnafoods" target="_blank" rel="noopener noreferrer" className="uf-social-btn" style={{ background: 'radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%)', width: 32, height: 32 }}>
@@ -432,7 +436,7 @@ const UserFooter = () => {
             </a>
 
             {/* WhatsApp */}
-            <a href="https://wa.me/919463685829" target="_blank" rel="noopener noreferrer" className="uf-social-btn" style={{ background: '#25d366', width: 32, height: 32 }}>
+            <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="uf-social-btn" style={{ background: '#25d366', width: 32, height: 32 }}>
               <svg viewBox="0 0 24 24" fill="white" width="15" height="15">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
                 <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.122 1.532 5.855L.057 23.535a.75.75 0 00.916.918l5.803-1.46A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.7-.498-5.253-1.37l-.376-.214-3.898.981.998-3.792-.234-.389A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
