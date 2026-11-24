@@ -3,6 +3,21 @@ const User = require('../../models/User/User');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
+// ── Constants ─────────────────────────────────────────────────────────────
+const ALLOWED_COUNTRIES = ['UAE'];
+const UAE_CODE = '971';
+
+// ── Helper: normalize UAE phone → "971XXXXXXXXX" (or null if invalid) ─────
+// Accepts: "050 123 4567", "0501234567", "+971 50 123 4567", "00971501234567", "971501234567"
+const normalizeUaePhone = (raw = '') => {
+    let digits = String(raw).replace(/\D/g, '');
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith(UAE_CODE)) digits = digits.slice(UAE_CODE.length);
+    else if (digits.startsWith('0')) digits = digits.slice(1);
+    // UAE mobile: 9 digits after country code, starting with 5
+    return /^5[0-9]{8}$/.test(digits) ? UAE_CODE + digits : null;
+};
+
 // ── Helper: generate JWT ──────────────────────────────────────────────────
 const generateToken = (userId) => {
     return jwt.sign(
@@ -26,6 +41,17 @@ const sanitizeUser = (user) => ({
     createdAt: user.createdAt,
 });
 
+// ── Helper: SMTP transporter (credentials from .env only) ────────────────
+const createMailer = () => nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+    port: Number(process.env.SMTP_PORT || 465),
+    secure: true, // SSL
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
+
 // ── Register ──────────────────────────────────────────────────────────────
 const register = async (req, res) => {
     try {
@@ -38,7 +64,22 @@ const register = async (req, res) => {
             });
         }
 
-        const emailExists = await User.findOne({ email: email.toLowerCase() });
+        if (!ALLOWED_COUNTRIES.includes(country)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid country. Only UAE is supported.',
+            });
+        }
+
+        const normalizedPhone = normalizeUaePhone(phone);
+        if (!normalizedPhone) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid UAE phone number. Use format 050 123 4567.',
+            });
+        }
+
+        const emailExists = await User.findOne({ email: email.toLowerCase().trim() });
         if (emailExists) {
             return res.status(409).json({
                 success: false,
@@ -46,8 +87,7 @@ const register = async (req, res) => {
             });
         }
 
-        const phoneExists = await User.findOne({ phone: phone.replace(/\D/g, '') });
-
+        const phoneExists = await User.findOne({ phone: normalizedPhone });
         if (phoneExists) {
             return res.status(409).json({
                 success: false,
@@ -55,7 +95,13 @@ const register = async (req, res) => {
             });
         }
 
-        const user = await User.create({ fullName, country, phone: phone.replace(/\D/g, ''), email, password });
+        const user = await User.create({
+            fullName,
+            country,
+            phone: normalizedPhone,
+            email,
+            password,
+        });
 
         const token = generateToken(user.id);
 
@@ -87,10 +133,20 @@ const login = async (req, res) => {
             });
         }
 
-        const isEmail = identifier.includes('@');
-        const filter = isEmail
-            ? { email: identifier.toLowerCase().trim() }
-            : { phone: identifier.replace(/\D/g, '') };
+        const trimmedId = identifier.trim();
+        const isEmail = trimmedId.includes('@');
+
+        let filter;
+        if (isEmail) {
+            filter = { email: trimmedId.toLowerCase() };
+        } else {
+            const normalizedPhone = normalizeUaePhone(trimmedId);
+            if (!normalizedPhone) {
+                return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+            }
+            filter = { phone: normalizedPhone };
+        }
+
         // includePassword: true — password excluded by default in findOne
         const user = await User.findOne(filter, true);
 
@@ -139,15 +195,21 @@ const getMe = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const { fullName, country, phone, gender, dateOfBirth } = req.body;
-        //      console.log("REQ BODY:", req.body);
-        // console.log("REQ FILE:", req.file);  // ← image aa rahi hai ya nahi
-        // console.log("REQ HEADERS:", req.headers['content-type']);
 
         // Only update avatar if a new file was actually uploaded
         const avatarUrl = req.file ? req.file.path : undefined;
 
+        let normalizedPhone;
         if (phone) {
-            const taken = await User.phoneExistsForOtherUser(phone, req.user.id);
+            normalizedPhone = normalizeUaePhone(phone);
+            if (!normalizedPhone) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid UAE phone number. Use format 050 123 4567.',
+                });
+            }
+
+            const taken = await User.phoneExistsForOtherUser(normalizedPhone, req.user.id);
             if (taken) {
                 return res.status(409).json({
                     success: false,
@@ -156,7 +218,20 @@ const updateProfile = async (req, res) => {
             }
         }
 
-        const updateData = { fullName, country, phone, gender, dateOfBirth };
+        if (country && !ALLOWED_COUNTRIES.includes(country)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid country. Only UAE is supported.',
+            });
+        }
+
+        const updateData = {
+            fullName,
+            country,
+            phone: normalizedPhone,
+            gender,
+            dateOfBirth,
+        };
         if (avatarUrl) updateData.avatar = avatarUrl; // only overwrite if new file came in
 
         const updatedUser = await User.findByIdAndUpdate(req.user.id, updateData);
@@ -172,6 +247,7 @@ const updateProfile = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 };
+
 // ── Change Password ───────────────────────────────────────────────────────
 const changePassword = async (req, res) => {
     try {
@@ -221,7 +297,7 @@ const changePassword = async (req, res) => {
     }
 };
 
-
+// ── Forgot Password ───────────────────────────────────────────────────────
 const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
@@ -230,7 +306,6 @@ const forgotPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Email is required.' });
         }
 
-        // ✅ Email se user dhundho — token se nahi
         const user = await User.findOne({ email: email.toLowerCase().trim() });
 
         if (!user) {
@@ -250,19 +325,7 @@ const forgotPassword = async (req, res) => {
 
         const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.hostinger.com',
-            port: 465,
-            secure: true, // SSL
-            auth: {
-                user: process.env.EMAIL_USER, // support@theorchardengine.co
-                pass: process.env.EMAIL_PASS, // Orchard_engin@04
-            },
-        });
-
-
-
-        await transporter.sendMail({
+        await createMailer().sendMail({
             from: `"OrchardEngine" <${process.env.EMAIL_USER}>`,
             to: user.email,
             subject: 'Reset Your Password — OrchardEngine',
@@ -291,6 +354,7 @@ const forgotPassword = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Server error. Please try again.' });
     }
 };
+
 // ── Reset Password ────────────────────────────────────────────────────────
 const resetPassword = async (req, res) => {
     try {
@@ -303,7 +367,6 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
         }
 
-        // Find user with this token and check it hasn't expired
         const user = await User.findByResetToken(token);
 
         if (!user) {
@@ -315,7 +378,6 @@ const resetPassword = async (req, res) => {
 
         const hashedPassword = await User.hashPassword(newPassword);
 
-        // Update password and clear the token
         await User.findByIdAndUpdate(user.id, {
             password: hashedPassword,
             resetToken: null,

@@ -3,9 +3,20 @@ import { X, Eye, EyeOff, ChevronDown } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const COUNTRIES = [
-  "India",
-];
+const DEFAULT_COUNTRY = 'UAE';
+const COUNTRY_FLAGS = { UAE: '🇦🇪' };
+const COUNTRY_DIAL_CODES = { UAE: '+971' };
+
+const COUNTRIES = ['UAE'];
+
+// UAE mobile: 05X XXX XXXX (10 digits, leading 0 ke saath)
+// Backend normalize karke 971XXXXXXXXX bana deta hai
+function formatPhone(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length > 6) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  if (digits.length > 3) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+  return digits;
+}
 
 
 // ── Login Form ────────────────────────────────────────
@@ -142,7 +153,7 @@ const LoginForm = ({ onSwitch, onClose, onLoginSuccess }) => {
               value={identifier}
               onChange={e => setIdentifier(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="user@cpnafoodscom"
+              placeholder="user@example.com or 050 123 4567"
               className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
             />
           </div>
@@ -168,7 +179,6 @@ const LoginForm = ({ onSwitch, onClose, onLoginSuccess }) => {
             </div>
           </div>
 
-          {/* Forgot Password — onClick added */}
           <div className="flex justify-end mb-6">
             <button
               onClick={() => setForgotMode(true)}
@@ -208,7 +218,7 @@ const LoginForm = ({ onSwitch, onClose, onLoginSuccess }) => {
 // ── Signup Form ───────────────────────────────────────
 const SignupForm = ({ onSwitch, onClose }) => {
   const [fullName, setFullName] = useState('');
-  const [country, setCountry]   = useState('');
+  const [country, setCountry]   = useState(DEFAULT_COUNTRY);
   const [phone, setPhone]       = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -240,7 +250,8 @@ const SignupForm = ({ onSwitch, onClose }) => {
         body:    JSON.stringify({
           fullName: fullName.trim(),
           country,
-          phone:    phone.trim(),
+          // Backend phone ko normalize karta hai, yahan sirf digits bhejte hain
+          phone:    phone.replace(/\D/g, ''),
           email:    email.trim(),
           password,
         }),
@@ -296,8 +307,9 @@ const SignupForm = ({ onSwitch, onClose }) => {
             onChange={e => setCountry(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-800 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-white"
           >
-            <option value="">Select Country</option>
-            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {COUNTRIES.map(c => (
+              <option key={c} value={c}>{COUNTRY_FLAGS[c]} {c}</option>
+            ))}
           </select>
           <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
@@ -307,13 +319,13 @@ const SignupForm = ({ onSwitch, onClose }) => {
         <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
         <div className="flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-green-500 focus-within:border-transparent transition">
           <span className="bg-gray-50 border-r border-gray-300 px-3 py-3 text-sm text-gray-600 font-medium flex items-center">
-            +00
+            {COUNTRY_DIAL_CODES[country]}
           </span>
           <input
             type="tel"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="Enter phone number"
+            onChange={e => setPhone(formatPhone(e.target.value))}
+            placeholder="050 123 4567"
             className="flex-1 px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white"
           />
         </div>
