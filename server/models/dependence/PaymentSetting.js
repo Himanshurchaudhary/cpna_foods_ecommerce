@@ -1,104 +1,126 @@
 const { pool } = require('../../config/db');
 
+const ALL_COLUMNS = [
+    'id', 'gatewayName', 'status', 'mode', 'secretKey', 'publishedKey',
+    'webhookSecret', 'title', 'logo', 'createdAt', 'updatedAt',
+];
+
+// Only these columns can ever reach SQL. Anything else is rejected.
+const WRITABLE_COLUMNS = [
+    'gatewayName', 'status', 'mode', 'secretKey', 'publishedKey',
+    'webhookSecret', 'title', 'logo',
+];
+
+const assertColumns = (keys) => {
+    const invalid = keys.filter((k) => !WRITABLE_COLUMNS.includes(k));
+    if (invalid.length) throw new Error(`Invalid column(s): ${invalid.join(', ')}`);
+};
+
+const definedKeys = (obj = {}) => Object.keys(obj).filter((k) => obj[k] !== undefined);
+
+const buildWhere = (filters = {}) => {
+    const keys = definedKeys(filters);
+    assertColumns(keys);
+    return {
+        clause: keys.map((k) => `${k} = ?`).join(' AND '),
+        values: keys.map((k) => filters[k]),
+    };
+};
+
 const createPaymentSettingTable = async () => {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS payment_settings (
-            id           INT AUTO_INCREMENT PRIMARY KEY,
-            gatewayName  ENUM('Stripe', 'Razorpay') NOT NULL UNIQUE,
-            status       BOOLEAN DEFAULT false,
-            mode         ENUM('Test', 'Live') DEFAULT 'Test',
-            secretKey    VARCHAR(500) NOT NULL,
-            publishedKey VARCHAR(500) NOT NULL,
-            title        VARCHAR(255) DEFAULT 'Online Payment',
-            logo         VARCHAR(500),
-            createdAt    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updatedAt    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            id            INT AUTO_INCREMENT PRIMARY KEY,
+            gatewayName   ENUM('Stripe', 'Razorpay') NOT NULL UNIQUE,
+            status        BOOLEAN DEFAULT false,
+            mode          ENUM('Test', 'Live') DEFAULT 'Test',
+            secretKey     VARCHAR(500) NOT NULL,
+            publishedKey  VARCHAR(500) NOT NULL,
+            webhookSecret VARCHAR(500) NULL,
+            title         VARCHAR(255) DEFAULT 'Online Payment',
+            logo          VARCHAR(500),
+            createdAt     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updatedAt     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
     `);
 };
 
-createPaymentSettingTable();
+// Adds webhookSecret to tables created before this change.
+const ensureWebhookColumn = async () => {
+    const [rows] = await pool.query(
+        `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'payment_settings'
+           AND COLUMN_NAME = 'webhookSecret'`
+    );
+    if (rows.length === 0) {
+        await pool.query(`ALTER TABLE payment_settings ADD COLUMN webhookSecret VARCHAR(500) NULL`);
+    }
+};
 
 const PaymentSetting = {
-
-    // Find one row by filter object  e.g. { gatewayName: 'Razorpay' }
+    // Single row by filter, e.g. { gatewayName: 'Stripe' }
     findOne: async (filters = {}) => {
-        const keys = Object.keys(filters);
-        if (keys.length === 0) {
-            const [rows] = await pool.query(`SELECT * FROM payment_settings LIMIT 1`);
-            return rows[0] ?? null;
-        }
-        const where  = keys.map(k => `${k} = ?`).join(' AND ');
-        const values = keys.map(k => filters[k]);
-        const [rows] = await pool.query(`SELECT * FROM payment_settings WHERE ${where} LIMIT 1`, values);
+        const { clause, values } = buildWhere(filters);
+        const sql = `SELECT ${ALL_COLUMNS.join(', ')} FROM payment_settings
+                     ${clause ? `WHERE ${clause}` : ''} LIMIT 1`;
+        const [rows] = await pool.query(sql, values);
         return rows[0] ?? null;
     },
 
-    // Find multiple rows, optional filters, optional field exclusions
+    // Multiple rows, optional filters, optional excluded columns (e.g. ['secretKey'])
     find: async (filters = {}, excludeFields = []) => {
-        const allColumns = ['id','gatewayName','status','mode','secretKey',
-                            'publishedKey','title','logo','createdAt','updatedAt'];
-        const selected   = allColumns.filter(c => !excludeFields.includes(c)).join(', ');
-
-        const keys = Object.keys(filters);
-        if (keys.length === 0) {
-            const [rows] = await pool.query(`SELECT ${selected} FROM payment_settings`);
-            return rows;
-        }
-        const where  = keys.map(k => `${k} = ?`).join(' AND ');
-        const values = keys.map(k => filters[k]);
-        const [rows] = await pool.query(
-            `SELECT ${selected} FROM payment_settings WHERE ${where}`, values
-        );
+        const { clause, values } = buildWhere(filters);
+        const selected = ALL_COLUMNS.filter((c) => !excludeFields.includes(c)).join(', ');
+        const sql = `SELECT ${selected} FROM payment_settings ${clause ? `WHERE ${clause}` : ''}`;
+        const [rows] = await pool.query(sql, values);
         return rows;
     },
 
-    // Insert a new row
     create: async (data) => {
-        const fields       = Object.keys(data);
-        const placeholders = fields.map(() => '?').join(', ');
-        const values       = fields.map(f => data[f]);
+        const fields = definedKeys(data);
+        assertColumns(fields);
+        if (fields.length === 0) throw new Error('No data to insert');
+
         const [result] = await pool.query(
-            `INSERT INTO payment_settings (${fields.join(', ')}) VALUES (${placeholders})`,
-            values
+            `INSERT INTO payment_settings (${fields.join(', ')}) VALUES (${fields.map(() => '?').join(', ')})`,
+            fields.map((f) => data[f])
         );
-        const [rows] = await pool.query(`SELECT * FROM payment_settings WHERE id = ?`, [result.insertId]);
+        const [rows] = await pool.query(
+            `SELECT ${ALL_COLUMNS.join(', ')} FROM payment_settings WHERE id = ?`,
+            [result.insertId]
+        );
         return rows[0];
     },
 
-    // Upsert by gatewayName
+    // Upsert by filter. Keys with undefined values are skipped, so they are never overwritten.
     findOneAndUpdate: async (filters, data) => {
+        const fields = definedKeys(data);
+        assertColumns(fields);
+
         const existing = await PaymentSetting.findOne(filters);
+        if (!existing) return PaymentSetting.create({ ...filters, ...data });
+        if (fields.length === 0) return existing;
 
-        if (existing) {
-            const fields     = Object.keys(data);
-            const setClause  = fields.map(f => `${f} = ?`).join(', ');
-            const values     = fields.map(f => data[f]);
-            const filterKeys = Object.keys(filters);
-            const where      = filterKeys.map(k => `${k} = ?`).join(' AND ');
-            const filterVals = filterKeys.map(k => filters[k]);
+        const { clause, values } = buildWhere(filters);
+        if (!clause) throw new Error('findOneAndUpdate requires a filter');
 
-            await pool.query(
-                `UPDATE payment_settings SET ${setClause} WHERE ${where}`,
-                [...values, ...filterVals]
-            );
-            return await PaymentSetting.findOne(filters);
-        } else {
-            return await PaymentSetting.create({ ...filters, ...data });
-        }
-    },
-
-    // Toggle status by gatewayName, returns updated row
-    toggleStatus: async (gatewayName) => {
         await pool.query(
-            `UPDATE payment_settings SET status = NOT status WHERE gatewayName = ?`,
-            [gatewayName]
+            `UPDATE payment_settings SET ${fields.map((f) => `${f} = ?`).join(', ')} WHERE ${clause}`,
+            [...fields.map((f) => data[f]), ...values]
         );
-        const [rows] = await pool.query(
-            `SELECT * FROM payment_settings WHERE gatewayName = ?`, [gatewayName]
-        );
-        return rows[0] ?? null;
+        return PaymentSetting.findOne(filters);
+    },
+};
+
+const initPaymentSettingTable = async () => {
+    try {
+        await createPaymentSettingTable();
+        await ensureWebhookColumn();
+    } catch (err) {
+        console.error('payment_settings table init failed:', err);
     }
 };
+initPaymentSettingTable();
 
 module.exports = PaymentSetting;

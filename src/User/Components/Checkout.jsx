@@ -1,36 +1,47 @@
-// pages/Checkout.jsx
-// ✅ 100% MOBILE RESPONSIVE — everything visible on all screen sizes
-// ✅ Buy Now support — ?buyNow=PRODUCT_ID&qty=N&variantId=V bypasses cart entirely
-// ✅ UPDATED: Variant support — variantId URL se padha, cart items mein variant label dikhega,
-//             placeOrder API mein variantId jaayega
-
-import { useState, useEffect, useCallback } from "react";
+import {
+  useState, useEffect, useCallback, useRef, useMemo,
+  forwardRef, useImperativeHandle,
+} from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import {
   MapPin, ChevronDown, ChevronUp, Tag, Truck,
   CreditCard, Banknote, CheckCircle, ChevronRight,
-  AlertCircle, Package, ArrowLeft, X, ShoppingBag
+  AlertCircle, Package, ArrowLeft, X, ShoppingBag,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const getToken = () => localStorage.getItem("userToken");
-const authHdr = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` });
+const authHdr = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${getToken()}`,
+});
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 const api = {
-  cart: () => fetch(`${API_URL}/api/cart`, { headers: authHdr() }).then(r => r.json()),
-  addresses: () => fetch(`${API_URL}/api/address`, { headers: authHdr() }).then(r => r.json()),
-  gateways: () => fetch(`${API_URL}/api/payment/active`).then(r => r.json()),
-  coupon: (body) => fetch(`${API_URL}/api/coupon/validate`, { method: "POST", headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
-  placeOrder: (body) => fetch(`${API_URL}/api/orders/place`, { method: "POST", headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
-  razorpayInit: (body) => fetch(`${API_URL}/api/payment/process`, { method: "POST", headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
-  razorpayVerify: (body) => fetch(`${API_URL}/api/payment/verify`, { method: "POST", headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
-  taxRate: () => fetch(`${API_URL}/api/taxes/active-rate`).then(r => r.json()),
-  deliveryRate: (price) => fetch(`${API_URL}/api/delivery/charge-for-price?price=${price}`).then(r => r.json()),
-  productList: () => fetch(`${API_URL}/api/Products/allFree?limit=500`).then(r => r.json()),
+  cart: () => fetch(`${API_URL}/api/cart`, { headers: authHdr() }).then((r) => r.json()),
+  addresses: () => fetch(`${API_URL}/api/address`, { headers: authHdr() }).then((r) => r.json()),
+  gateways: () => fetch(`${API_URL}/api/payment/active`).then((r) => r.json()),
+  coupon: (body) =>
+    fetch(`${API_URL}/api/coupon/validate`, {
+      method: "POST", headers: authHdr(), body: JSON.stringify(body),
+    }).then((r) => r.json()),
+  placeOrder: (body) =>
+    fetch(`${API_URL}/api/orders/place`, {
+      method: "POST", headers: authHdr(), body: JSON.stringify(body),
+    }).then((r) => r.json()),
+  stripeIntent: (body) =>
+    fetch(`${API_URL}/api/payment/stripe/intent`, {
+      method: "POST", headers: authHdr(), body: JSON.stringify(body),
+    }).then((r) => r.json()),
+  taxRate: () => fetch(`${API_URL}/api/taxes/active-rate`).then((r) => r.json()),
+  deliveryRate: (price) =>
+    fetch(`${API_URL}/api/delivery/charge-for-price?price=${price}`).then((r) => r.json()),
+  productList: () => fetch(`${API_URL}/api/Products/allFree?limit=500`).then((r) => r.json()),
 };
 
-// ─── Spinner ──────────────────────────────────────────────────────────────────
+// ─── Small UI pieces ──────────────────────────────────────────────────────────
 const Spinner = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="2.5" strokeLinecap="round"
@@ -48,12 +59,11 @@ const Badge = ({ children, color = "#1f2937" }) => (
   </span>
 );
 
-// ─── Section Header ───────────────────────────────────────────────────────────
 const SectionHeader = ({ icon, title, action }) => (
   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
     <h2 style={{
       margin: 0, fontSize: 15, fontWeight: 800, color: "#1a2332",
-      display: "flex", alignItems: "center", gap: 8
+      display: "flex", alignItems: "center", gap: 8,
     }}>
       {icon} {title}
     </h2>
@@ -61,10 +71,10 @@ const SectionHeader = ({ icon, title, action }) => (
   </div>
 );
 
-// ─── Address Modal ─────────────────────────────────────────────────────────────
+// ─── Address Modal ────────────────────────────────────────────────────────────
 function AddressModal({ addresses, selectedId, onSelect, onClose, navigate }) {
   return (
-    <div onClick={e => e.target === e.currentTarget && onClose()} style={{
+    <div onClick={(e) => e.target === e.currentTarget && onClose()} style={{
       position: "fixed", inset: 0, zIndex: 1100,
       background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)",
       display: "flex", alignItems: "flex-end", justifyContent: "center",
@@ -81,30 +91,31 @@ function AddressModal({ addresses, selectedId, onSelect, onClose, navigate }) {
         </div>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "8px 18px 14px", borderBottom: "1px solid #f3f4f6", flexShrink: 0
+          padding: "8px 18px 14px", borderBottom: "1px solid #f3f4f6", flexShrink: 0,
         }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#1a2332" }}>Select Address</h3>
           <button onClick={onClose} style={{
             background: "#f3f4f6", border: "none", cursor: "pointer",
-            borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center"
+            borderRadius: "50%", width: 30, height: 30,
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <X size={15} color="#6b7280" />
           </button>
         </div>
         <div style={{
           padding: "14px 16px 0px", display: "flex", flexDirection: "column",
-          gap: 10, overflowY: "auto", flex: 1
+          gap: 10, overflowY: "auto", flex: 1,
         }}>
-          {addresses.map(addr => {
+          {addresses.map((addr) => {
             const sel = addr.id === selectedId;
-            const full = [addr.house, addr.road, addr.landmark, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ");
+            const full = [addr.house, addr.road, addr.landmark, addr.city, addr.state, addr.pincode]
+              .filter(Boolean).join(", ");
             return (
               <div key={addr.id} onClick={() => { onSelect(addr.id); onClose(); }}
                 style={{
                   border: `2px solid ${sel ? "#16a34a" : "#e5e7eb"}`,
                   borderRadius: 14, padding: "14px 16px", cursor: "pointer",
-                  background: sel ? "#f0fdf4" : "#fff", transition: "all 0.15s",
-                  minHeight: 44,
+                  background: sel ? "#f0fdf4" : "#fff", transition: "all 0.15s", minHeight: 44,
                 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: "#1a2332" }}>{addr.name}</span>
@@ -116,7 +127,7 @@ function AddressModal({ addresses, selectedId, onSelect, onClose, navigate }) {
                 {sel && (
                   <div style={{
                     marginTop: 8, display: "flex", alignItems: "center", gap: 5,
-                    color: "#16a34a", fontSize: 12, fontWeight: 700
+                    color: "#16a34a", fontSize: 12, fontWeight: 700,
                   }}>
                     <CheckCircle size={13} /> Selected
                   </div>
@@ -132,34 +143,22 @@ function AddressModal({ addresses, selectedId, onSelect, onClose, navigate }) {
                 onClose();
               }}
               style={{
-                width: "100%",
-                padding: "14px 0",
-                background: "none",
-                border: "2px dashed #16a34a",
-                borderRadius: 14,
-                color: "#16a34a",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
+                width: "100%", padding: "14px 0", background: "none",
+                border: "2px dashed #16a34a", borderRadius: 14, color: "#16a34a",
+                fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               }}
             >
               <span style={{ fontSize: 20 }}>+</span> Add New Address
             </button>
           </div>
         </div>
-        
       </div>
-
     </div>
   );
 }
 
-// ─── Success Screen ────────────────────────────────────────────────────────────
+// ─── Success Screen ───────────────────────────────────────────────────────────
 function OrderSuccess({ order, onDone }) {
   return (
     <div style={{
@@ -174,14 +173,13 @@ function OrderSuccess({ order, onDone }) {
       }}>
         <div style={{
           width: 80, height: 80, borderRadius: "50%", background: "#f0fdf4",
-          border: "3px solid #bbf7d0",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          margin: "0 auto 20px",
+          border: "3px solid #bbf7d0", display: "flex", alignItems: "center",
+          justifyContent: "center", margin: "0 auto 20px",
         }}>
           <CheckCircle size={40} color="#16a34a" strokeWidth={2} />
         </div>
         <h2 style={{ margin: "0 0 8px", fontSize: "clamp(20px,5vw,24px)", fontWeight: 800, color: "#1a2332" }}>
-          Order Placed! 🎉
+          Order Placed!
         </h2>
         <p style={{ margin: "0 0 4px", fontSize: 14, color: "#6b7280" }}>Your order has been confirmed.</p>
         <p style={{ margin: "0 0 24px", fontSize: 13, fontWeight: 700, color: "#16a34a" }}>
@@ -190,11 +188,15 @@ function OrderSuccess({ order, onDone }) {
         <div style={{ background: "#f8faf8", borderRadius: 14, padding: "16px 18px", marginBottom: 24, textAlign: "left" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={{ fontSize: 13, color: "#6b7280" }}>Total Paid</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: "#1a2332" }}>AED{Number(order?.total ?? 0).toFixed(2)}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#1a2332" }}>
+              AED {Number(order?.total ?? 0).toFixed(2)}
+            </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontSize: 13, color: "#6b7280" }}>Payment</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{order?.paymentMethod}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+              {order?.paymentMethod === "Card" ? "Card" : "Cash on Delivery"}
+            </span>
           </div>
         </div>
         <button onClick={onDone} style={{
@@ -209,56 +211,70 @@ function OrderSuccess({ order, onDone }) {
   );
 }
 
-// ─── Price Summary Rows ────────────────────────────────────────────────────────
-function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, deliveryLoading, taxRate, taxList, tax, total }) {
-
+// ─── Price Summary ────────────────────────────────────────────────────────────
+function SummaryRows({
+  subtotal, couponDiscount, taxableAmount, shippingCharge, deliveryLoading,
+  taxRate, taxList, tax, total,
+}) {
   const Row = ({ label, value, valueColor, borderStyle = "1px dashed #f0f0f0" }) => (
     <div style={{
       display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "8px 0", borderBottom: borderStyle
+      padding: "8px 0", borderBottom: borderStyle,
     }}>
       <span style={{ fontSize: 13, color: "#6b7280" }}>{label}</span>
       <span style={{ fontSize: 13, fontWeight: 700, color: valueColor || "#374151" }}>{value}</span>
     </div>
   );
 
+  const pctBadge = (bg, text) => (
+    <span style={{
+      fontSize: 10, color: "#fff", background: bg,
+      padding: "1px 6px", borderRadius: 4, fontWeight: 700,
+    }}>
+      {text}
+    </span>
+  );
+
   return (
     <div>
-      <Row label="Subtotal" value={`AED${subtotal.toFixed(2)}`} />
+      <Row label="Subtotal" value={`AED ${subtotal.toFixed(2)}`} />
 
-      {couponDiscount > 0 && <>
-        <Row label="Coupon Discount" value={`-AED${couponDiscount.toFixed(2)}`} valueColor="#ef4444" />
-        <Row label="After Discount" value={`AED${taxableAmount.toFixed(2)}`} />
-      </>}
+      {couponDiscount > 0 && (
+        <>
+          <Row label="Coupon Discount" value={`-AED ${couponDiscount.toFixed(2)}`} valueColor="#ef4444" />
+          <Row label="After Discount" value={`AED ${taxableAmount.toFixed(2)}`} />
+        </>
+      )}
 
       <Row
-        label={<span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <Truck size={12} color="#9ca3af" /> Shipping
-        </span>}
-        value={deliveryLoading ? <Spinner size={12} /> : shippingCharge === 0 ? "Free" : `AED${shippingCharge.toFixed(2)}`}
+        label={
+          <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <Truck size={12} color="#9ca3af" /> Shipping
+          </span>
+        }
+        value={
+          deliveryLoading ? <Spinner size={12} />
+            : shippingCharge === 0 ? "Free"
+            : `AED ${shippingCharge.toFixed(2)}`
+        }
         valueColor={shippingCharge === 0 ? "#16a34a" : undefined}
       />
 
       {taxRate === 0 ? (
-        <Row label="Tax" value="AED0.00" />
+        <Row label="Tax" value="AED 0.00" />
       ) : taxList.length === 1 ? (
         <Row
           label={
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {taxList[0].taxName}
-              <span style={{
-                fontSize: 10, color: "#fff", background: "#6b7280",
-                padding: "1px 6px", borderRadius: 4, fontWeight: 700
-              }}>
-                {taxList[0].percentage}%
-              </span>
+              {pctBadge("#6b7280", `${taxList[0].percentage}%`)}
             </span>
           }
-          value={`AED${tax.toFixed(2)}`}
+          value={`AED ${tax.toFixed(2)}`}
         />
       ) : (
         <>
-          {taxList.map(t => {
+          {taxList.map((t) => {
             const amount = parseFloat(((taxableAmount * Number(t.percentage)) / 100).toFixed(2));
             return (
               <Row
@@ -266,15 +282,10 @@ function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, 
                 label={
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     {t.taxName}
-                    <span style={{
-                      fontSize: 10, color: "#fff", background: "#6b7280",
-                      padding: "1px 6px", borderRadius: 4, fontWeight: 700
-                    }}>
-                      {t.percentage}%
-                    </span>
+                    {pctBadge("#6b7280", `${t.percentage}%`)}
                   </span>
                 }
-                value={`AED${amount.toFixed(2)}`}
+                value={`AED ${amount.toFixed(2)}`}
               />
             );
           })}
@@ -282,53 +293,54 @@ function SummaryRows({ subtotal, couponDiscount, taxableAmount, shippingCharge, 
             label={
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 Total Tax
-                <span style={{
-                  fontSize: 10, color: "#fff", background: "#374151",
-                  padding: "1px 6px", borderRadius: 4, fontWeight: 700
-                }}>
-                  {taxRate}%
-                </span>
+                {pctBadge("#374151", `${taxRate}%`)}
               </span>
             }
-            value={`AED${tax.toFixed(2)}`}
+            value={`AED ${tax.toFixed(2)}`}
             valueColor="#374151"
           />
         </>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, marginTop: 4 }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        paddingTop: 14, marginTop: 4,
+      }}>
         <span style={{ fontSize: 15, fontWeight: 800, color: "#1a2332" }}>Total Payable</span>
-        <span style={{ fontSize: 22, fontWeight: 800, color: "#1a2332" }}>AED{total.toFixed(2)}</span>
+        <span style={{ fontSize: 22, fontWeight: 800, color: "#1a2332" }}>AED {total.toFixed(2)}</span>
       </div>
     </div>
   );
 }
 
-// ─── Coupon Input ──────────────────────────────────────────────────────────────
-function CouponSection({ couponApplied, couponCode, setCouponCode, couponError, setCouponError, couponLoading, handleCouponApply, removeCoupon, couponDiscount }) {
+// ─── Coupon ───────────────────────────────────────────────────────────────────
+function CouponSection({
+  couponApplied, couponCode, setCouponCode, couponError, setCouponError,
+  couponLoading, handleCouponApply, removeCoupon, couponDiscount,
+}) {
   return (
     <div style={{ marginTop: 16, background: "#f8faf8", borderRadius: 14, padding: "14px" }}>
       <p style={{
         margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#374151",
-        display: "flex", alignItems: "center", gap: 6
+        display: "flex", alignItems: "center", gap: 6,
       }}>
         <Tag size={13} color="#16a34a" /> Have a coupon?
       </p>
       {couponApplied ? (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, padding: "10px 14px",
-          flexWrap: "wrap", gap: 8
+          background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10,
+          padding: "10px 14px", flexWrap: "wrap", gap: 8,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <CheckCircle size={14} color="#16a34a" />
             <span style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>{couponApplied.couponCode}</span>
-            <span style={{ fontSize: 12, color: "#6b7280" }}>–AED{couponDiscount.toFixed(2)} off</span>
+            <span style={{ fontSize: 12, color: "#6b7280" }}>-AED {couponDiscount.toFixed(2)} off</span>
           </div>
           <button onClick={removeCoupon} style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "#9ca3af", display: "flex", padding: 4, minHeight: 32, minWidth: 32,
-            alignItems: "center", justifyContent: "center"
+            background: "none", border: "none", cursor: "pointer", color: "#9ca3af",
+            display: "flex", padding: 4, minHeight: 32, minWidth: 32,
+            alignItems: "center", justifyContent: "center",
           }}>
             <X size={14} />
           </button>
@@ -337,13 +349,13 @@ function CouponSection({ couponApplied, couponCode, setCouponCode, couponError, 
         <div style={{ display: "flex" }}>
           <input
             type="text" value={couponCode}
-            onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
-            onKeyDown={e => e.key === "Enter" && handleCouponApply()}
+            onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
+            onKeyDown={(e) => e.key === "Enter" && handleCouponApply()}
             placeholder="Enter coupon code"
             style={{
               flex: 1, padding: "11px 13px", border: "1.5px solid #e5e7eb",
               borderRight: "none", borderRadius: "10px 0 0 10px", fontSize: 13,
-              fontFamily: "inherit", color: "#374151", minWidth: 0, minHeight: 44
+              fontFamily: "inherit", color: "#374151", minWidth: 0, minHeight: 44,
             }}
           />
           <button onClick={handleCouponApply} disabled={couponLoading}
@@ -351,7 +363,7 @@ function CouponSection({ couponApplied, couponCode, setCouponCode, couponError, 
               padding: "11px 16px", background: "#1a2332", color: "#fff", border: "none",
               borderRadius: "0 10px 10px 0", cursor: couponLoading ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700,
-              fontFamily: "inherit", flexShrink: 0, minHeight: 44
+              fontFamily: "inherit", flexShrink: 0, minHeight: 44,
             }}>
             {couponLoading ? <Spinner size={14} /> : <ChevronRight size={14} />}
           </button>
@@ -360,7 +372,7 @@ function CouponSection({ couponApplied, couponCode, setCouponCode, couponError, 
       {couponError && (
         <p style={{
           margin: "8px 0 0", fontSize: 12, color: "#ef4444",
-          display: "flex", alignItems: "center", gap: 5
+          display: "flex", alignItems: "center", gap: 5,
         }}>
           <AlertCircle size={12} /> {couponError}
         </p>
@@ -369,8 +381,34 @@ function CouponSection({ couponApplied, couponCode, setCouponCode, couponError, 
   );
 }
 
-// ─── Full Summary Panel (desktop sidebar) ─────────────────────────────────────
-function OrderSummaryPanel({ summaryRowsProps, couponProps, error, placing, cartItems, selectedAddressId, handlePlaceOrder, navigate }) {
+// ─── Stripe card form (lives inside <Elements>) ───────────────────────────────
+// Exposes confirm() to the parent through ref, so the parent Place Order button can use it.
+const StripePaymentForm = forwardRef(function StripePaymentForm(_props, ref) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  useImperativeHandle(ref, () => ({
+    confirm: async () => {
+      if (!stripe || !elements) throw new Error("Card form is still loading. Please wait.");
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: "if_required",
+      });
+      if (error) throw new Error(error.message || "Card payment failed");
+      if (!paymentIntent || paymentIntent.status !== "succeeded") {
+        throw new Error("Payment was not completed");
+      }
+      return paymentIntent;
+    },
+  }), [stripe, elements]);
+
+  return <PaymentElement />;
+});
+
+// ─── Order summary (desktop sidebar) ──────────────────────────────────────────
+function OrderSummaryPanel({
+  summaryRowsProps, couponProps, error, placing, canPlace, handlePlaceOrder, navigate,
+}) {
   return (
     <>
       <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 800, color: "#1a2332" }}>Order Summary</h2>
@@ -381,40 +419,38 @@ function OrderSummaryPanel({ summaryRowsProps, couponProps, error, placing, cart
         <div style={{
           marginTop: 12, background: "#fef2f2", border: "1.5px solid #fecaca",
           borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 8,
-          fontSize: 13, color: "#ef4444", fontWeight: 600
+          fontSize: 13, color: "#ef4444", fontWeight: 600,
         }}>
           <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {error}
         </div>
       )}
 
-      <button onClick={handlePlaceOrder}
-        disabled={placing || cartItems.length === 0 || !selectedAddressId}
+      <button onClick={handlePlaceOrder} disabled={placing || !canPlace}
         style={{
           width: "100%", marginTop: 14, padding: "15px 0",
-          background: placing ? "#15803d" : "#16a34a",
-          color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800,
-          cursor: (placing || !selectedAddressId) ? "not-allowed" : "pointer",
+          background: placing ? "#15803d" : "#16a34a", color: "#fff", border: "none",
+          borderRadius: 12, fontSize: 15, fontWeight: 800,
+          cursor: placing || !canPlace ? "not-allowed" : "pointer",
           fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center",
           gap: 10, transition: "background 0.2s", boxShadow: "0 4px 16px rgba(22,163,74,0.3)",
-          opacity: !selectedAddressId ? 0.7 : 1, minHeight: 52,
+          opacity: !canPlace ? 0.7 : 1, minHeight: 52,
         }}>
         {placing ? <><Spinner size={16} /> Placing Order…</> : "Place Order"}
       </button>
 
-      <button onClick={() => navigate(-1)}
-        style={{
-          width: "100%", marginTop: 10, padding: "12px 0", background: "none",
-          border: "1.5px solid #e5e7eb", borderRadius: 12, fontSize: 13, fontWeight: 600,
-          color: "#6b7280", cursor: "pointer", fontFamily: "inherit",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 46
-        }}>
+      <button onClick={() => navigate(-1)} style={{
+        width: "100%", marginTop: 10, padding: "12px 0", background: "none",
+        border: "1.5px solid #e5e7eb", borderRadius: 12, fontSize: 13, fontWeight: 600,
+        color: "#6b7280", cursor: "pointer", fontFamily: "inherit",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 46,
+      }}>
         <ArrowLeft size={14} /> Back
       </button>
     </>
   );
 }
 
-// ─── Payment Option Button ─────────────────────────────────────────────────────
+// ─── Payment option button ────────────────────────────────────────────────────
 const PayBtn = ({ active, onClick, icon, label }) => (
   <button onClick={onClick} style={{
     display: "flex", alignItems: "center", gap: 10,
@@ -426,7 +462,7 @@ const PayBtn = ({ active, onClick, icon, label }) => (
     <div style={{
       width: 20, height: 20, borderRadius: "50%",
       border: `2px solid ${active ? "#16a34a" : "#d1d5db"}`,
-      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
     }}>
       {active && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a" }} />}
     </div>
@@ -435,7 +471,6 @@ const PayBtn = ({ active, onClick, icon, label }) => (
   </button>
 );
 
-// ─── Skeleton ──────────────────────────────────────────────────────────────────
 const Skeleton = () => (
   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
     {[100, 80, 120].map((h, i) => (
@@ -449,16 +484,15 @@ const Skeleton = () => (
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ─── MAIN CHECKOUT PAGE ────────────────────────────────────────────────────────
+// MAIN CHECKOUT PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // ── Buy Now params ─────────────────────────────────────────────────────────
+  // Buy Now params
   const buyNowProductId = searchParams.get("buyNow");
   const buyNowQty = parseInt(searchParams.get("qty") || "1", 10);
-  // ✅ CHANGE 1: variantId URL se padho
   const buyNowVariantId = searchParams.get("variantId") || null;
   const isBuyNow = !!buyNowProductId;
 
@@ -482,11 +516,20 @@ export default function Checkout() {
   const [couponError, setCouponError] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
 
+  // Card payment state
+  const [stripeKey, setStripeKey] = useState(null);
+  const [stripeClientSecret, setStripeClientSecret] = useState(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeError, setStripeError] = useState("");
+  const stripeFormRef = useRef(null);
+
   const [placing, setPlacing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [error, setError] = useState("");
 
-  // ✅ Page load hote hi buyNow params save karo
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+
+  // Save return URL so the address page can send the user back here
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const buyNow = params.get("buyNow");
@@ -501,14 +544,14 @@ export default function Checkout() {
       sessionStorage.setItem("checkoutReturnUrl", "checkout");
     }
   }, []);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
 
-  // ── Load ───────────────────────────────────────────────────────────────────
+  // ── Load data ───────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -516,55 +559,42 @@ export default function Checkout() {
         api.addresses(), api.gateways(), api.taxRate(),
       ]);
 
-      let resolvedQty = 1;
-
-      // ── Buy Now: fetch single product, skip cart ──────────────────────────
       if (isBuyNow) {
         try {
           const data = await api.productList();
           const list = Array.isArray(data) ? data : data.products || data.data || [];
-          const found = list.find(p => p.id == buyNowProductId);
-          if (found) {
-            // ✅ CHANGE 2: Variant dhundho aur synthetic item mein lagao
-            let selectedVariant = null;
-            if (buyNowVariantId && found.variants?.length > 0) {
-              selectedVariant = found.variants.find(v => v.id == buyNowVariantId) || null;
-            }
+          const found = list.find((p) => p.id == buyNowProductId);
+          if (!found) { navigate("/user/product"); return; }
 
-            // Variant ki price use karo agar available hai
-            const effectivePrice = selectedVariant
-              ? Number(selectedVariant.sellingPrice ?? found.sellingPrice ?? 0)
-              : Number(found.sellingPrice ?? 0);
+          const selectedVariant = buyNowVariantId && found.variants?.length > 0
+            ? found.variants.find((v) => v.id == buyNowVariantId) || null
+            : null;
 
-            const syntheticItem = {
-              product: { ...found, sellingPrice: effectivePrice },
-              quantity: buyNowQty,
-              variantId: buyNowVariantId,
-              variant: selectedVariant,   // label/color display ke liye
-            };
-            setCartItems([syntheticItem]);
-            resolvedQty = buyNowQty;
-          } else {
-            navigate("/user/product");
-            return;
-          }
+          const effectivePrice = selectedVariant
+            ? Number(selectedVariant.sellingPrice ?? found.sellingPrice ?? 0)
+            : Number(found.sellingPrice ?? 0);
+
+          setCartItems([{
+            product: { ...found, sellingPrice: effectivePrice },
+            quantity: buyNowQty,
+            variantId: buyNowVariantId,
+            variant: selectedVariant,
+          }]);
         } catch {
           navigate("/user/product");
           return;
         }
       } else {
-        // ── Normal checkout: load cart ──────────────────────────────────────
         const cartRes = await api.cart().catch(() => null);
         const items = cartRes?.items || [];
         setCartItems(items);
         if (items.length === 0) { navigate("/user/product"); return; }
-        resolvedQty = items.reduce((s, i) => s + (i.quantity || 1), 0);
       }
 
       if (addrRes.status === "fulfilled") {
         const addrs = addrRes.value?.addresses || [];
         setAddresses(addrs);
-        const def = addrs.find(a => a.isDefault) || addrs[0];
+        const def = addrs.find((a) => a.isDefault) || addrs[0];
         if (def) setSelectedAddressId(def.id);
       }
       if (gwRes.status === "fulfilled") setGateways(gwRes.value?.gateways || []);
@@ -572,31 +602,72 @@ export default function Checkout() {
         setTaxRate(taxRes.value.totalPercentage || 0);
         setTaxList(taxRes.value.taxes || []);
       }
-
-      
-
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, [navigate, isBuyNow, buyNowProductId, buyNowQty, buyNowVariantId]);
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Re-fetch delivery charge when cart qty changes ─────────────────────────
+  // ── Delivery charge (display only, server recalculates on place) ───────────
   useEffect(() => {
     if (cartItems.length === 0) return;
-
     const currentSubtotal = cartItems.reduce((s, i) => {
-        const p = i.product || i;
-        return s + Number(p.sellingPrice ?? p.price ?? 0) * (i.quantity || 1);
+      const p = i.product || i;
+      return s + Number(p.sellingPrice ?? p.price ?? 0) * (i.quantity || 1);
     }, 0);
 
     setDeliveryLoading(true);
     api.deliveryRate(currentSubtotal)
-        .then(res => { if (res?.success) setShippingCharge(Number(res.charge ?? 0)); })
-        .catch(() => {})
-        .finally(() => setDeliveryLoading(false));
-}, [cartItems]);
+      .then((res) => { if (res?.success) setShippingCharge(Number(res.charge ?? 0)); })
+      .catch(() => {})
+      .finally(() => setDeliveryLoading(false));
+  }, [cartItems]);
 
-  // ── Derived pricing ────────────────────────────────────────────────────────
+  // ── Create Stripe PaymentIntent when Card is selected ──────────────────────
+  // Recreated when address, coupon or item selection changes, so the amount stays correct.
+  useEffect(() => {
+    if (paymentMethod !== "Card" || !selectedAddressId || loading || cartItems.length === 0) return;
+
+    const buyNowBody = isBuyNow
+      ? { buyNow: true, productId: buyNowProductId, quantity: buyNowQty, variantId: buyNowVariantId }
+      : {};
+
+    let cancelled = false;
+    setStripeLoading(true);
+    setStripeError("");
+    setStripeClientSecret(null);
+
+    api.stripeIntent({
+      addressId: selectedAddressId,
+      couponCode: couponApplied?.couponCode || null,
+      ...buyNowBody,
+    })
+      .then((data) => {
+        if (cancelled) return;
+        if (!data.success) {
+          setStripeError(data.message || "Card payment is unavailable");
+          return;
+        }
+        setStripeKey(data.publishableKey);
+        setStripeClientSecret(data.clientSecret);
+      })
+      .catch(() => { if (!cancelled) setStripeError("Could not start card payment"); })
+      .finally(() => { if (!cancelled) setStripeLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [
+    paymentMethod, selectedAddressId, couponApplied?.couponCode, loading,
+    cartItems.length, isBuyNow, buyNowProductId, buyNowQty, buyNowVariantId,
+  ]);
+
+  // Load Stripe.js once per publishable key
+  const stripePromise = useMemo(
+    () => (stripeKey ? loadStripe(stripeKey) : null),
+    [stripeKey]
+  );
+
+  // ── Pricing (display only, the server is the source of truth) ──────────────
   const subtotal = cartItems.reduce((s, i) => {
     const p = i.product || i;
     return s + Number(p.sellingPrice ?? p.price ?? p.buyingPrice ?? 0) * (i.quantity || 1);
@@ -610,98 +681,111 @@ export default function Checkout() {
   const taxableAmount = Math.max(0, subtotal - couponDiscount);
   const tax = parseFloat(((taxableAmount * taxRate) / 100).toFixed(2));
   const total = Math.max(0, taxableAmount + shippingCharge + tax);
-  const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null;
+  const selectedAddress = addresses.find((a) => a.id === selectedAddressId) || null;
   const itemCount = cartItems.reduce((s, i) => s + (i.quantity || 1), 0);
+  const stripeEnabled = gateways.some((g) => g.gatewayName === "Stripe");
+
+  const canPlace = !!selectedAddressId && cartItems.length > 0 &&
+    (paymentMethod === "COD" || !!stripeClientSecret);
 
   // ── Coupon ─────────────────────────────────────────────────────────────────
   const handleCouponApply = async () => {
     if (!couponCode.trim()) return;
-    setCouponLoading(true); setCouponError("");
+    setCouponLoading(true);
+    setCouponError("");
     try {
       const data = await api.coupon({ code: couponCode.trim(), orderAmount: subtotal });
       if (data.success) setCouponApplied(data.coupon);
       else setCouponError(data.message || "Invalid coupon");
-    } catch { setCouponError("Failed to validate coupon"); }
-    finally { setCouponLoading(false); }
+    } catch {
+      setCouponError("Failed to validate coupon");
+    } finally {
+      setCouponLoading(false);
+    }
   };
-  const removeCoupon = () => { setCouponApplied(null); setCouponCode(""); setCouponError(""); };
+
+  const removeCoupon = () => {
+    setCouponApplied(null);
+    setCouponCode("");
+    setCouponError("");
+  };
 
   // ── Place Order ────────────────────────────────────────────────────────────
+  // No amounts are sent. The server calculates coupon, delivery and tax itself.
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) { setError("Please select a delivery address"); return; }
-    setError(""); setPlacing(true);
+    if (paymentMethod === "Card" && !stripeClientSecret) {
+      setError("Card payment is not ready yet");
+      return;
+    }
 
-    // ✅ CHANGE 3: variantId bhi order payload mein bhejo
+    setError("");
+    setPlacing(true);
+
     const buyNowPayload = isBuyNow
-      ? {
-        buyNow: true,
-        productId: buyNowProductId,
-        quantity: buyNowQty,
-        variantId: buyNowVariantId ?? undefined,   // ← NEW
-      }
+      ? { buyNow: true, productId: buyNowProductId, quantity: buyNowQty, variantId: buyNowVariantId ?? undefined }
       : {};
 
     try {
-      if (paymentMethod === "Razorpay") {
-        const rzpData = await api.razorpayInit({ amount: total });
-        if (!rzpData.success) { setError(rzpData.message || "Payment init failed"); setPlacing(false); return; }
-        const options = {
-          key: rzpData.key_id, amount: rzpData.amount, currency: "INR",
-          order_id: rzpData.order_id, name: "The CPNA FOODs Delivery", description: "Order Payment",
-          handler: async (response) => {
-            const verify = await api.razorpayVerify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            if (!verify.success) { setError("Payment verification failed"); setPlacing(false); return; }
-            const orderRes = await api.placeOrder({
-              addressId: selectedAddressId, paymentMethod: "Razorpay", note,
-              couponCode: couponApplied?.couponCode || null, couponDiscount, shippingCharge, tax,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              ...buyNowPayload,
-            });
-            if (orderRes.success) {
-              if (!isBuyNow) {
-                window.dispatchEvent(new CustomEvent("cart-updated", { detail: { items: [] } }));
-              }
-              setOrderSuccess({ ...orderRes.order, total, paymentMethod });
-            } else { setError(orderRes.message || "Order failed"); }
-            setPlacing(false);
-          },
-          modal: { ondismiss: () => setPlacing(false) },
-        };
-        new window.Razorpay(options).open();
-      } else {
-        const orderRes = await api.placeOrder({
-          addressId: selectedAddressId,
-          paymentMethod: paymentMethod === "Card" ? "Card" : "COD",
-          note, couponCode: couponApplied?.couponCode || null, couponDiscount, shippingCharge, tax,
-          ...buyNowPayload,
-        });
-        if (orderRes.success) {
-          if (!isBuyNow) {
-            window.dispatchEvent(new CustomEvent("cart-updated", { detail: { items: [] } }));
-          }
-          setOrderSuccess({ ...orderRes.order, total, paymentMethod });
-        } else { setError(orderRes.message || "Failed to place order"); }
-        setPlacing(false);
+      let stripePaymentIntentId = null;
+
+      if (paymentMethod === "Card") {
+        const intent = await stripeFormRef.current?.confirm();
+        if (!intent) throw new Error("Card form is not ready. Please try again.");
+        stripePaymentIntentId = intent.id;
       }
-    } catch { setError("Something went wrong. Please try again."); setPlacing(false); }
+
+      const orderRes = await api.placeOrder({
+        addressId: selectedAddressId,
+        paymentMethod: paymentMethod === "Card" ? "Card" : "COD",
+        stripePaymentIntentId,
+        note,
+        couponCode: couponApplied?.couponCode || null,
+        ...buyNowPayload,
+      });
+
+      if (orderRes.success) {
+        if (!isBuyNow) {
+          window.dispatchEvent(new CustomEvent("cart-updated", { detail: { items: [] } }));
+        }
+        setOrderSuccess({ ...orderRes.order, total, paymentMethod });
+      } else {
+        setError(orderRes.message || "Failed to place order");
+      }
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (orderSuccess) {
     return <OrderSuccess order={orderSuccess} onDone={() => navigate("/user/userDashboard")} />;
   }
 
-  const summaryRowsProps = { subtotal, couponDiscount, taxableAmount, shippingCharge, deliveryLoading, taxRate, tax, taxList, total };
-  const couponProps = { couponApplied, couponCode, setCouponCode, couponError, setCouponError, couponLoading, handleCouponApply, removeCoupon, couponDiscount };
+  const summaryRowsProps = {
+    subtotal, couponDiscount, taxableAmount, shippingCharge, deliveryLoading,
+    taxRate, tax, taxList, total,
+  };
+  const couponProps = {
+    couponApplied, couponCode, setCouponCode, couponError, setCouponError,
+    couponLoading, handleCouponApply, removeCoupon, couponDiscount,
+  };
 
   const card = {
     background: "#fff", borderRadius: 16, padding: isMobile ? "16px 14px" : "22px",
     marginBottom: 14, boxShadow: "0 2px 14px rgba(0,0,0,0.06)",
   };
+
+  const errorBox = error && (
+    <div style={{
+      marginTop: 12, background: "#fef2f2", border: "1.5px solid #fecaca",
+      borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "flex-start",
+      gap: 8, fontSize: 13, color: "#ef4444", fontWeight: 600,
+    }}>
+      <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {error}
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "#f4f6f4", fontFamily: "'Nunito','Segoe UI',sans-serif" }}>
@@ -712,14 +796,14 @@ export default function Checkout() {
         @keyframes ckSlideUp { from{opacity:0;transform:translateY(40px)} to{opacity:1;transform:translateY(0)} }
         @keyframes ckSpin    { to { transform: rotate(360deg); } }
         @keyframes ckPulse   { 0%,100%{opacity:1} 50%{opacity:0.45} }
-        input:focus,textarea:focus {
+        input:focus, textarea:focus {
           border-color: #16a34a !important;
           box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
           outline: none;
         }
       `}</style>
 
-      {/* ── Top breadcrumb bar ── */}
+      {/* Top bar */}
       <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0" }}>
         <div style={{
           maxWidth: 1080, margin: "0 auto",
@@ -727,35 +811,35 @@ export default function Checkout() {
           display: "flex", alignItems: "center", gap: 8,
         }}>
           <button onClick={() => navigate(-1)} style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "none", border: "none", cursor: "pointer",
-            color: "#16a34a", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-            padding: "6px 0", minHeight: 36,
+            display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
+            cursor: "pointer", color: "#16a34a", fontSize: 13, fontWeight: 700,
+            fontFamily: "inherit", padding: "6px 0", minHeight: 36,
           }}>
             <ArrowLeft size={15} /> Back
           </button>
-          {!isMobile && <>
-            <ChevronRight size={13} color="#9ca3af" />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2332" }}>Checkout</span>
-          </>}
+          {!isMobile && (
+            <>
+              <ChevronRight size={13} color="#9ca3af" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2332" }}>Checkout</span>
+            </>
+          )}
           {isMobile && (
             <span style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "#1a2332" }}>Checkout</span>
           )}
         </div>
       </div>
 
-      {/* ── Main content ── */}
+      {/* Main */}
       <div style={{
         maxWidth: 1080, margin: "0 auto",
         padding: isMobile ? "14px 12px 170px" : "24px 20px 40px",
       }}>
-
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 800, color: "#1a2332" }}>
             {isBuyNow ? "Buy Now" : "Checkout"}
           </h1>
           {!loading && (
-            <button onClick={() => setShowItems(p => !p)} style={{
+            <button onClick={() => setShowItems((p) => !p)} style={{
               display: "flex", alignItems: "center", gap: 6, background: "#f0fdf4",
               border: "1.5px solid #bbf7d0", borderRadius: 10, padding: "7px 12px",
               cursor: "pointer", fontFamily: "inherit", color: "#16a34a",
@@ -768,24 +852,22 @@ export default function Checkout() {
           )}
         </div>
 
-        {/* ── Expanded cart items ── */}
+        {/* Expanded items */}
         {showItems && !loading && (
           <div style={{ ...card, animation: "ckFadeUp 0.2s ease" }}>
             <h3 style={{
               margin: "0 0 14px", fontSize: 14, fontWeight: 800, color: "#1a2332",
-              display: "flex", alignItems: "center", gap: 7
+              display: "flex", alignItems: "center", gap: 7,
             }}>
               <Package size={14} color="#16a34a" /> Order Items
             </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               {cartItems.map((item, i) => {
                 const p = item.product || item;
                 const price = Number(p.sellingPrice ?? p.price ?? p.buyingPrice ?? 0);
                 const name = p.name || "Product";
                 const img = p.thumbnail || p.additionalImages?.[0] || p.image;
                 const qty = item.quantity || 1;
-
-                // ✅ CHANGE 4: Variant label/color display karo
                 const variant = item.variant || null;
                 const variantLabel = variant
                   ? [variant.colorName, variant.label].filter(Boolean).join(" / ")
@@ -803,24 +885,24 @@ export default function Checkout() {
                     }}>
                       {img
                         ? <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📦</div>}
-                      {/* Color dot agar color variant hai */}
+                        : <div style={{
+                            width: "100%", height: "100%", display: "flex",
+                            alignItems: "center", justifyContent: "center", fontSize: 20,
+                          }}>📦</div>}
                       {variant?.color && (
                         <div style={{
-                          position: "absolute", bottom: 3, right: 3,
-                          width: 10, height: 10, borderRadius: "50%",
-                          background: variant.color, border: "1.5px solid #fff",
+                          position: "absolute", bottom: 3, right: 3, width: 10, height: 10,
+                          borderRadius: "50%", background: variant.color, border: "1.5px solid #fff",
                         }} />
                       )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{
                         margin: 0, fontSize: 13, fontWeight: 700, color: "#1a2332",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>{name}</p>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, color: "#9ca3af" }}>Qty: {qty}</span>
-                        {/* ✅ Variant label badge */}
                         {variantLabel && (
                           <span style={{
                             fontSize: 10, fontWeight: 700, color: "#16a34a",
@@ -833,7 +915,7 @@ export default function Checkout() {
                       </div>
                     </div>
                     <span style={{ fontSize: 14, fontWeight: 800, color: "#16a34a", whiteSpace: "nowrap" }}>
-                      AED{(price * qty).toFixed(2)}
+                      AED {(price * qty).toFixed(2)}
                     </span>
                   </div>
                 );
@@ -851,11 +933,9 @@ export default function Checkout() {
             gap: isMobile ? 0 : 20,
             alignItems: "start",
           }}>
-
-            {/* ══════════ LEFT COLUMN ══════════ */}
+            {/* LEFT COLUMN */}
             <div>
-
-              {/* ── Shipping Address ── */}
+              {/* Shipping address */}
               <div style={card}>
                 <SectionHeader
                   icon={<MapPin size={15} color="#16a34a" />}
@@ -863,8 +943,7 @@ export default function Checkout() {
                   action={addresses.length > 0 && (
                     <button onClick={() => setShowAddrModal(true)} style={{
                       background: "none", border: "none", cursor: "pointer", color: "#16a34a",
-                      fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-                      padding: "6px 8px", minHeight: 36,
+                      fontSize: 13, fontWeight: 700, fontFamily: "inherit", padding: "6px 8px", minHeight: 36,
                     }}>
                       Change
                     </button>
@@ -887,8 +966,7 @@ export default function Checkout() {
                   </div>
                 ) : selectedAddress ? (
                   <div style={{
-                    border: "2px solid #16a34a", borderRadius: 12,
-                    padding: "14px 16px", background: "#f0fdf4"
+                    border: "2px solid #16a34a", borderRadius: 12, padding: "14px 16px", background: "#f0fdf4",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                       <MapPin size={13} color="#16a34a" />
@@ -899,7 +977,8 @@ export default function Checkout() {
                     <p style={{ margin: "0 0 4px", fontSize: 13, color: "#6b7280" }}>{selectedAddress.phone}</p>
                     <p style={{ margin: 0, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
                       {[selectedAddress.house, selectedAddress.road, selectedAddress.landmark,
-                      selectedAddress.city, selectedAddress.state, selectedAddress.pincode].filter(Boolean).join(", ")}
+                        selectedAddress.city, selectedAddress.state, selectedAddress.pincode]
+                        .filter(Boolean).join(", ")}
                     </p>
                   </div>
                 ) : (
@@ -909,12 +988,9 @@ export default function Checkout() {
                 )}
               </div>
 
-              {/* ── Payment Method ── */}
+              {/* Payment method */}
               <div style={card}>
-                <SectionHeader
-                  icon={<CreditCard size={15} color="#16a34a" />}
-                  title="Payment Method"
-                />
+                <SectionHeader icon={<CreditCard size={15} color="#16a34a" />} title="Payment Method" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <PayBtn
                     active={paymentMethod === "COD"}
@@ -922,27 +998,60 @@ export default function Checkout() {
                     icon={<Banknote size={18} color={paymentMethod === "COD" ? "#16a34a" : "#9ca3af"} />}
                     label="Cash on Delivery"
                   />
+                  {stripeEnabled && (
+                    <PayBtn
+                      active={paymentMethod === "Card"}
+                      onClick={() => setPaymentMethod("Card")}
+                      icon={<CreditCard size={18} color={paymentMethod === "Card" ? "#16a34a" : "#9ca3af"} />}
+                      label="Credit / Debit Card"
+                    />
+                  )}
                 </div>
+
+                {paymentMethod === "Card" && (
+                  <div style={{ marginTop: 14 }}>
+                    {stripeLoading && (
+                      <p style={{ margin: 0, fontSize: 13, color: "#6b7280", display: "flex", alignItems: "center", gap: 8 }}>
+                        <Spinner size={14} /> Preparing secure card form…
+                      </p>
+                    )}
+                    {stripeError && (
+                      <p style={{ margin: 0, fontSize: 13, color: "#ef4444", display: "flex", alignItems: "center", gap: 6 }}>
+                        <AlertCircle size={13} /> {stripeError}
+                      </p>
+                    )}
+                    {stripeClientSecret && stripePromise && (
+                      <Elements
+                        key={stripeClientSecret}
+                        stripe={stripePromise}
+                        options={{ clientSecret: stripeClientSecret, appearance: { theme: "stripe" } }}
+                      >
+                        <StripePaymentForm ref={stripeFormRef} />
+                      </Elements>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* ── Note ── */}
+              {/* Note */}
               <div style={card}>
                 <h2 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#1a2332" }}>
                   Note <span style={{ fontWeight: 500, fontSize: 13, color: "#9ca3af" }}>(Optional)</span>
                 </h2>
                 <textarea
-                  value={note} onChange={e => setNote(e.target.value)}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
                   placeholder="Write any special instructions for your order…"
                   rows={3}
                   style={{
                     width: "100%", padding: "11px 13px", border: "1.5px solid #e5e7eb",
                     borderRadius: 10, fontSize: 13, color: "#374151", fontFamily: "inherit",
-                    resize: "vertical", transition: "border-color 0.2s", lineHeight: 1.6
+                    resize: "vertical", transition: "border-color 0.2s", lineHeight: 1.6,
                   }}
                 />
               </div>
 
-              {/* ── Mobile: Order Summary inline ── */}
+              {/* Mobile summary */}
               {isMobile && (
                 <div style={card}>
                   <h2 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 800, color: "#1a2332" }}>
@@ -950,22 +1059,12 @@ export default function Checkout() {
                   </h2>
                   <SummaryRows {...summaryRowsProps} />
                   <CouponSection {...couponProps} />
-
-                  {error && (
-                    <div style={{
-                      marginTop: 12, background: "#fef2f2", border: "1.5px solid #fecaca",
-                      borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "flex-start",
-                      gap: 8, fontSize: 13, color: "#ef4444", fontWeight: 600
-                    }}>
-                      <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {error}
-                    </div>
-                  )}
+                  {errorBox}
                 </div>
               )}
-
             </div>
 
-            {/* ══════════ RIGHT COLUMN — desktop only ══════════ */}
+            {/* RIGHT COLUMN, desktop only */}
             {!isMobile && (
               <div style={{ position: "sticky", top: 90 }}>
                 <div style={card}>
@@ -974,20 +1073,18 @@ export default function Checkout() {
                     couponProps={couponProps}
                     error={error}
                     placing={placing}
-                    cartItems={cartItems}
-                    selectedAddressId={selectedAddressId}
+                    canPlace={canPlace}
                     handlePlaceOrder={handlePlaceOrder}
                     navigate={navigate}
                   />
                 </div>
               </div>
             )}
-
           </div>
         )}
       </div>
 
-      {/* ══════════ MOBILE BOTTOM STICKY BAR ══════════ */}
+      {/* Mobile sticky bottom bar */}
       {!loading && isMobile && (
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 500,
@@ -1002,25 +1099,26 @@ export default function Checkout() {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginBottom: 2 }}>Total Payable</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#1a2332", lineHeight: 1 }}>
-                AED{total.toFixed(2)}
+                AED {total.toFixed(2)}
               </div>
               {shippingCharge === 0 && (
                 <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 600, marginTop: 2 }}>
-                  🎉 Free delivery
+                  Free delivery
                 </div>
               )}
             </div>
             <button
               onClick={handlePlaceOrder}
-              disabled={placing || !selectedAddressId}
+              disabled={placing || !canPlace}
               style={{
                 padding: "13px 24px",
-                background: placing ? "#15803d" : !selectedAddressId ? "#9ca3af" : "#16a34a",
+                background: placing ? "#15803d" : !canPlace ? "#9ca3af" : "#16a34a",
                 color: "#fff", border: "none", borderRadius: 12,
-                fontSize: 14, fontWeight: 800, cursor: placing || !selectedAddressId ? "not-allowed" : "pointer",
+                fontSize: 14, fontWeight: 800,
+                cursor: placing || !canPlace ? "not-allowed" : "pointer",
                 fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8,
                 whiteSpace: "nowrap", minHeight: 50, flexShrink: 0,
-                boxShadow: selectedAddressId ? "0 4px 14px rgba(22,163,74,0.3)" : "none",
+                boxShadow: canPlace ? "0 4px 14px rgba(22,163,74,0.3)" : "none",
               }}>
               {placing ? <><Spinner size={15} /> Placing…</> : "Place Order"}
             </button>
@@ -1029,7 +1127,7 @@ export default function Checkout() {
           {!selectedAddressId && (
             <div style={{
               padding: "0 14px 10px", display: "flex", alignItems: "center", gap: 6,
-              fontSize: 12, color: "#f59e0b", fontWeight: 600
+              fontSize: 12, color: "#f59e0b", fontWeight: 600,
             }}>
               <AlertCircle size={12} /> Please select a delivery address above
             </div>
@@ -1037,7 +1135,6 @@ export default function Checkout() {
         </div>
       )}
 
-      {/* Address Modal */}
       {showAddrModal && (
         <AddressModal
           addresses={addresses}
@@ -1045,7 +1142,6 @@ export default function Checkout() {
           onSelect={setSelectedAddressId}
           onClose={() => setShowAddrModal(false)}
           navigate={navigate}
-
         />
       )}
     </div>

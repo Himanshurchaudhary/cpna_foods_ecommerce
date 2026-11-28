@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
-// ── Config ─────────────────────────────────────────────────────────────────────
-const API_BASEA = import.meta.env.VITE_API_URL;
-
-const API_BASE = `${API_BASEA}/api/payment`;
+// ── Config ────────────────────────────────────────────────────────────────────
+const API_BASE = `${import.meta.env.VITE_API_URL}/api/payment`;
 const getToken = () => localStorage.getItem("adminToken") || "";
 
 const apiFetch = async (path, options = {}) => {
@@ -14,18 +12,20 @@ const apiFetch = async (path, options = {}) => {
     ...(options.headers || {}),
   };
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || "Something went wrong");
   return data;
 };
 
-// ── Gateway meta (logos rendered as styled text / SVG like the screenshot) ────
+// Masked values from the server look like "sk_test_****abcd"
+const isMasked = (v) => !v || String(v).includes("****");
+
 const GATEWAYS = [
-  { name: "Stripe",   color: "#635BFF", labelColor: "#635BFF" },
-  { name: "Razorpay", color: "#2D81F7", labelColor: "#072654" },
+  { name: "Stripe" },
+  { name: "Razorpay" },
 ];
 
-// ── Toast ──────────────────────────────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────────────────────
 const Toast = ({ toasts, remove }) => (
   <div className="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
     {toasts.map((t) => (
@@ -44,8 +44,8 @@ const Toast = ({ toasts, remove }) => (
   </div>
 );
 
-// ── Toggle Switch ──────────────────────────────────────────────────────────────
-const Toggle = ({ checked, onChange, disabled, label }) => (
+// ── Toggle ────────────────────────────────────────────────────────────────────
+const Toggle = ({ checked, onChange, disabled }) => (
   <div className="flex items-center gap-2">
     <span className={`text-sm font-semibold ${checked ? "text-green-600" : "text-slate-400"}`}>
       {checked ? "On" : "Off"}
@@ -66,7 +66,7 @@ const Toggle = ({ checked, onChange, disabled, label }) => (
   </div>
 );
 
-// ── Gateway Logo (styled like the screenshot) ─────────────────────────────────
+// ── Gateway logo ──────────────────────────────────────────────────────────────
 const GatewayLogo = ({ name, logoUrl }) => {
   if (logoUrl) {
     return (
@@ -75,7 +75,6 @@ const GatewayLogo = ({ name, logoUrl }) => {
       </div>
     );
   }
-
   if (name === "Stripe") {
     return (
       <div className="flex items-center justify-center h-20">
@@ -85,68 +84,64 @@ const GatewayLogo = ({ name, logoUrl }) => {
       </div>
     );
   }
-
-  if (name === "Razorpay") {
-    return (
-      <div className="flex items-center justify-center h-20 gap-2">
-        {/* Simple Razorpay-style triangle logo */}
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-          <polygon points="18,2 34,32 2,32" fill="#2D81F7" />
-          <polygon points="18,10 28,32 8,32" fill="#072654" opacity="0.5" />
-        </svg>
-        <span style={{ fontFamily: "'Helvetica Neue', sans-serif", fontSize: 28, fontWeight: 700, color: "#072654" }}>
-          Razorpay
-        </span>
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <div className="flex items-center justify-center h-20 gap-2">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <polygon points="18,2 34,32 2,32" fill="#2D81F7" />
+        <polygon points="18,10 28,32 8,32" fill="#072654" opacity="0.5" />
+      </svg>
+      <span style={{ fontFamily: "'Helvetica Neue', sans-serif", fontSize: 28, fontWeight: 700, color: "#072654" }}>
+        Razorpay
+      </span>
+    </div>
+  );
 };
 
-// ── Field definitions per gateway ─────────────────────────────────────────────
+// ── Fields per gateway ────────────────────────────────────────────────────────
 const getFields = (name) =>
   name === "Stripe"
     ? [
-        { key: "secretKey",    label: "Secret Key",            placeholder: "sk_test_..." },
-        { key: "publishedKey", label: "Published Key",         placeholder: "pk_test_..." },
-        { key: "title",        label: "Payment Gateway Title", placeholder: "Stripe" },
+        { key: "secretKey",     label: "Secret Key",            placeholder: "sk_test_...", required: true },
+        { key: "publishedKey",  label: "Published Key",         placeholder: "pk_test_...", required: true },
+        { key: "webhookSecret", label: "Webhook Signing Secret", placeholder: "whsec_... (optional, needed for webhooks)", required: false },
+        { key: "title",         label: "Payment Gateway Title", placeholder: "Stripe", required: true },
       ]
     : [
-        { key: "publishedKey", label: "Key",                   placeholder: "rzp_test_..." },
-        { key: "secretKey",    label: "Secret",                placeholder: "Your Razorpay secret" },
-        { key: "title",        label: "Payment Gateway Title", placeholder: "Razorpay" },
+        { key: "publishedKey", label: "Key",                   placeholder: "rzp_test_...",        required: true },
+        { key: "secretKey",    label: "Secret",                placeholder: "Your Razorpay secret", required: true },
+        { key: "title",        label: "Payment Gateway Title", placeholder: "Razorpay",            required: true },
       ];
 
-// ── Single Gateway Card ────────────────────────────────────────────────────────
-const GatewayCard = ({ gatewayMeta, initial, onSave, togglingName }) => {
+const INPUT_CLS =
+  "w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition";
+
+// ── Single gateway card ───────────────────────────────────────────────────────
+const GatewayCard = ({ gatewayMeta, initial, onSave }) => {
   const { name } = gatewayMeta;
   const fields = getFields(name);
 
-  const [form, setForm] = useState({
-    mode:         initial?.mode         || "Test",
-    secretKey:    initial?.secretKey    || "",
-    publishedKey: initial?.publishedKey || "",
-    title:        initial?.title        || name,
-    status:       initial?.status       ?? false,
+  const buildForm = (src) => ({
+    mode:          src?.mode          || "Test",
+    secretKey:     src?.secretKey     || "",
+    publishedKey:  src?.publishedKey  || "",
+    webhookSecret: src?.webhookSecret || "",
+    title:         src?.title         || name,
+    status:        src?.status        ?? false,
   });
-  const [logoFile, setLogoFile] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(initial?.logo || null);
-  const [saving, setSaving] = useState(false);
-  const [toggling, setToggling] = useState(false);
 
-  // Keep form in sync when parent re-fetches
+  const [form, setForm]           = useState(() => buildForm(initial));
+  const [logoFile, setLogoFile]   = useState(null);
+  const [logoPreview, setLogoPreview] = useState(initial?.logo || null);
+  const [saving, setSaving]       = useState(false);
+  const [toggling, setToggling]   = useState(false);
+
+  // Re-sync when the parent reloads the settings
   useEffect(() => {
     if (initial) {
-      setForm({
-        mode:         initial.mode         || "Test",
-        secretKey:    initial.secretKey    || "",
-        publishedKey: initial.publishedKey || "",
-        title:        initial.title        || name,
-        status:       initial.status       ?? false,
-      });
+      setForm(buildForm(initial));
       setLogoPreview(initial.logo || null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial, name]);
 
   const handleChange = (key, val) => setForm((p) => ({ ...p, [key]: val }));
@@ -164,7 +159,7 @@ const GatewayCard = ({ gatewayMeta, initial, onSave, togglingName }) => {
     try {
       const data = await apiFetch(`/toggle/${name}`, { method: "PATCH" });
       setForm((p) => ({ ...p, status: data.status }));
-      onSave(name, { ...initial, status: data.status }, data.message);
+      onSave(name, { ...(initial || {}), gatewayName: name, status: data.status }, data.message);
     } catch (err) {
       onSave(name, null, err.message, "error");
     } finally {
@@ -178,26 +173,19 @@ const GatewayCard = ({ gatewayMeta, initial, onSave, togglingName }) => {
     try {
       const fd = new FormData();
       fd.append("gatewayName", name);
-      fd.append("status",       form.status);
-      fd.append("mode",         form.mode);
-      fd.append("secretKey",    form.secretKey);
+      fd.append("status", String(form.status));
+      fd.append("mode", form.mode);
       fd.append("publishedKey", form.publishedKey);
-      fd.append("title",        form.title);
+      fd.append("title", form.title);
+
+      // Masked secrets are not sent, so the stored value stays as it is
+      if (!isMasked(form.secretKey)) fd.append("secretKey", form.secretKey);
+      if (!isMasked(form.webhookSecret)) fd.append("webhookSecret", form.webhookSecret);
       if (logoFile) fd.append("logo", logoFile);
 
-      // Try update first; if 404 / not-found, add
-      let data;
-      try {
-        data = await apiFetch("/update", { method: "POST", body: fd });
-      } catch (err) {
-        if (err.message.toLowerCase().includes("not found") || err.message.toLowerCase().includes("exist")) {
-          data = await apiFetch("/add", { method: "POST", body: fd });
-        } else {
-          throw err;
-        }
-      }
-
-      onSave(name, data.settings || data.data, `${name} saved successfully!`);
+      const data = await apiFetch("/update", { method: "POST", body: fd });
+      setLogoFile(null);
+      onSave(name, data.settings, `${name} saved successfully!`);
     } catch (err) {
       onSave(name, null, err.message, "error");
     } finally {
@@ -207,53 +195,50 @@ const GatewayCard = ({ gatewayMeta, initial, onSave, togglingName }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <h2 className="text-base font-extrabold tracking-widest text-slate-800 uppercase">
-          {name}
-        </h2>
-        <Toggle
-          checked={form.status}
-          onChange={handleToggle}
-          disabled={toggling}
-        />
+        <h2 className="text-base font-extrabold tracking-widest text-slate-800 uppercase">{name}</h2>
+        <Toggle checked={form.status} onChange={handleToggle} disabled={toggling} />
       </div>
 
-      {/* Logo area */}
       <div className="px-6 pt-5 pb-2 border-b border-gray-50">
         <GatewayLogo name={name} logoUrl={logoPreview} />
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-        {/* Mode */}
+        {/* Mode dropdown */}
         <div>
           <label className="block text-sm text-slate-600 mb-1.5">Mode</label>
-          <input
+          <select
             value={form.mode}
             onChange={(e) => handleChange("mode", e.target.value)}
-            placeholder="Test"
-            className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition"
-          />
+            className={INPUT_CLS}
+          >
+            <option value="Test">Test</option>
+            <option value="Live">Live</option>
+          </select>
         </div>
 
-        {/* Dynamic fields */}
         {fields.map((f) => (
           <div key={f.key}>
             <label className="block text-sm text-slate-600 mb-1.5">
-              {f.label} <span className="text-red-500">*</span>
+              {f.label} {f.required && <span className="text-red-500">*</span>}
             </label>
             <input
-              required
+              required={f.required}
               value={form[f.key]}
               onChange={(e) => handleChange(f.key, e.target.value)}
               placeholder={f.placeholder}
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-700 font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition"
+              className={`${INPUT_CLS} font-mono`}
             />
+            {isMasked(form[f.key]) && form[f.key] && (
+              <p className="text-xs text-slate-400 mt-1">
+                Saved value is hidden. Type a new value only if you want to replace it.
+              </p>
+            )}
           </div>
         ))}
 
-        {/* Choose Logo */}
+        {/* Logo */}
         <div>
           <label className="block text-sm text-slate-600 mb-1.5">Choose Logo</label>
           <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden text-sm">
@@ -267,7 +252,6 @@ const GatewayCard = ({ gatewayMeta, initial, onSave, togglingName }) => {
           </div>
         </div>
 
-        {/* Submit */}
         <div className="flex justify-end pt-2">
           <button
             type="submit"
@@ -282,21 +266,20 @@ const GatewayCard = ({ gatewayMeta, initial, onSave, togglingName }) => {
   );
 };
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function PaymentGatewaysPage() {
-  const [settings, setSettings]   = useState({});   // { Stripe: {...}, Razorpay: {...} }
-  const [fetching, setFetching]   = useState(true);
-  const [toasts,   setToasts]     = useState([]);
+  const [settings, setSettings] = useState({});
+  const [fetching, setFetching] = useState(true);
+  const [toasts, setToasts] = useState([]);
 
   const addToast = useCallback((msg, type = "success") => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts((p) => [...p, { id, msg, type }]);
     setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 3500);
   }, []);
 
   const removeToast = (id) => setToasts((p) => p.filter((t) => t.id !== id));
 
-  // Fetch all gateway settings
   const fetchSettings = useCallback(async () => {
     setFetching(true);
     try {

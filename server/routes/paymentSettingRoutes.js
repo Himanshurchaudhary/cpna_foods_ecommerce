@@ -7,22 +7,23 @@ const {
     updatePaymentSettings,
     toggleGatewayStatus,
     getActiveGateways,
-    processPayment,
-    verifyPayment,
+    createStripeIntent,
 } = require('../controllers/dependenceController/paymentSettingController');
 const { protect } = require('../middleware/authMiddleware');
 
-// Admin — manage gateways
-router.get('/all',                protect, getAllGatewaySettings);
-router.post('/add',               protect, upload.single('logo'), addPaymentSettings);
-router.post('/update',            protect, upload.single('logo'), updatePaymentSettings);
-router.patch('/toggle/:gatewayName', protect,toggleGatewayStatus);
+// Admin: manage gateways
+// Note: add an admin-only middleware here if you have one. protect only checks login.
+router.get('/all',                   protect, getAllGatewaySettings);
+router.post('/add',                  protect, upload.single('logo'), addPaymentSettings);
+router.post('/update',               protect, upload.single('logo'), updatePaymentSettings);
+router.patch('/toggle/:gatewayName', protect, toggleGatewayStatus);
 
-// Public — active gateways for checkout
+// Public: active gateways for checkout
 router.get('/active', getActiveGateways);
 
-// User — payment flow
-router.post('/process', protect, processPayment);
-router.post('/verify',  protect, verifyPayment);
+// User: card payment
+router.post('/stripe/intent', protect, createStripeIntent);
+
+// The Stripe webhook is registered in app.js, before express.json() (see section 5)
 
 module.exports = router;
