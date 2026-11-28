@@ -222,7 +222,7 @@ const Sidebar = () => {
           isActive={isActive}
         />
 
-        {/* <DropdownNavItem
+        <DropdownNavItem
           icon={<Briefcase size={20} />}
           label="Configure Dependence"
           defaultOpen={isAnyActive([
@@ -242,7 +242,7 @@ const Sidebar = () => {
             { label: 'Firebase Notification', path: '/admin/firebase' },
           ]}
           isActive={isActive}
-        /> */}
+        />
 
         {/* Logout */}
         <div className="pt-4 mt-2 border-t border-gray-100">
