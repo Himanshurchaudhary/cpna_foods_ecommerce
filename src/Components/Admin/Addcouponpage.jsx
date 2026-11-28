@@ -1,10 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const API_BASEA = import.meta.env.VITE_API_URL;
-
-const API_BASE_URL = `${API_BASEA}/api/coupon`; // Update this to your backend URL
-
-const CATEGORIES_API = `${API_BASEA}/api/Category/all`; // Update to your categories endpoint
+const API_BASE_URL = `${API_BASEA}/api/coupon`;
+const CATEGORIES_API = `${API_BASEA}/api/Category/all`;
 
 const initialForm = {
   applicableFor: "All",
@@ -21,14 +19,25 @@ const initialForm = {
   expiryTime: "",
 };
 
+const inputCls =
+  "w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition";
+
+const SelectArrow = () => (
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+);
+
 export default function AddCouponPage() {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
-  const [toast, setToast] = useState(null); // { type: 'success' | 'error', message: string }
+  const [toast, setToast] = useState(null);
 
-  // Fetch categories on mount
-  useState(() => {
+  // Load categories once
+  useEffect(() => {
     const fetchCategories = async () => {
       try {
         const token = localStorage.getItem("adminToken");
@@ -36,10 +45,9 @@ export default function AddCouponPage() {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const data = await res.json();
-        // Adjust based on your API response shape: data.categories or data
         setCategories(Array.isArray(data) ? data : data.categories || []);
       } catch {
-        // silently fail — categories dropdown will just be empty
+        // dropdown stays empty
       }
     };
     fetchCategories();
@@ -55,11 +63,13 @@ export default function AddCouponPage() {
   };
 
   const handleSubmit = async () => {
-    // Basic validation
-    const required = ["couponCode", "discountType", "discountValue", "minOrderAmount", "startDate", "startTime", "expiryDate", "expiryTime"];
+    const required = [
+      "couponCode", "discountType", "discountValue", "minOrderAmount",
+      "startDate", "startTime", "expiryDate", "expiryTime",
+    ];
     for (const field of required) {
       if (!form[field]) {
-        showToast("error", `Please fill in all required fields.`);
+        showToast("error", "Please fill in all required fields.");
         return;
       }
     }
@@ -70,12 +80,12 @@ export default function AddCouponPage() {
     }
 
     const payload = {
-      couponCode: form.couponCode.toUpperCase(),
+      couponCode: form.couponCode.trim().toUpperCase(),
       discountType: form.discountType,
       discountValue: Number(form.discountValue),
       minOrderAmount: Number(form.minOrderAmount),
       limitPerUser: form.limitPerUser ? Number(form.limitPerUser) : 1,
-      maxDiscountAmount: form.maxDiscountAmount ? Number(form.maxDiscountAmount) : undefined,
+      maxDiscountAmount: form.maxDiscountAmount ? Number(form.maxDiscountAmount) : null,
       applicableFor: form.applicableFor,
       category: form.applicableFor === "Category_Specific" ? form.category : undefined,
       startDate: form.startDate,
@@ -86,7 +96,7 @@ export default function AddCouponPage() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("adminToken"); // Adjust token retrieval as needed
+      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API_BASE_URL}/add`, {
         method: "POST",
         headers: {
@@ -104,20 +114,17 @@ export default function AddCouponPage() {
       } else {
         showToast("error", data.error || data.message || "Something went wrong.");
       }
-    } catch (err) {
+    } catch {
       showToast("error", "Network error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    setForm(initialForm);
-  };
+  const handleCancel = () => setForm(initialForm);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-start justify-center py-10 px-4">
-      {/* Toast Notification */}
       {toast && (
         <div
           className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all duration-300 ${
@@ -129,7 +136,6 @@ export default function AddCouponPage() {
       )}
 
       <div className="w-full max-w-4xl bg-white rounded-xl shadow-sm border border-gray-200">
-        {/* Header */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-200">
           <div className="w-7 h-7 rounded-full border-2 border-gray-700 flex items-center justify-center">
             <span className="text-gray-700 text-lg font-bold leading-none">+</span>
@@ -138,7 +144,7 @@ export default function AddCouponPage() {
         </div>
 
         <div className="px-6 py-6 space-y-6">
-          {/* Applicable For + Category (conditional) */}
+          {/* Applicable For + Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -149,17 +155,13 @@ export default function AddCouponPage() {
                   name="applicableFor"
                   value={form.applicableFor}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-white"
+                  className={`${inputCls} appearance-none bg-white`}
                 >
                   <option value="All">All</option>
                   <option value="New_User">New User</option>
                   <option value="Category_Specific">Category Specific</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                <SelectArrow />
               </div>
             </div>
 
@@ -173,7 +175,7 @@ export default function AddCouponPage() {
                     name="category"
                     value={form.category}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-white"
+                    className={`${inputCls} appearance-none bg-white`}
                   >
                     <option value="">Select a category</option>
                     {categories.map((cat) => (
@@ -182,11 +184,7 @@ export default function AddCouponPage() {
                       </option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
+                  <SelectArrow />
                 </div>
               </div>
             )}
@@ -204,7 +202,7 @@ export default function AddCouponPage() {
                 value={form.couponCode}
                 onChange={handleChange}
                 placeholder="Coupon code"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition uppercase"
+                className={`${inputCls} uppercase`}
               />
             </div>
             <div>
@@ -216,21 +214,17 @@ export default function AddCouponPage() {
                   name="discountType"
                   value={form.discountType}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition bg-white"
+                  className={`${inputCls} appearance-none bg-white`}
                 >
                   <option value="Amount">Amount</option>
                   <option value="Percentage">Percentage</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                <SelectArrow />
               </div>
             </div>
           </div>
 
-          {/* Discount + Minimum Order Amount */}
+          {/* Discount + Min Order */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -243,12 +237,12 @@ export default function AddCouponPage() {
                 onChange={handleChange}
                 placeholder="Discount"
                 min="0"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                className={inputCls}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Minimum Order Amount <span className="text-red-500">*</span>
+                Minimum Order Amount (AED) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -257,12 +251,12 @@ export default function AddCouponPage() {
                 onChange={handleChange}
                 placeholder="Minimum Order Amount"
                 min="0"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                className={inputCls}
               />
             </div>
           </div>
 
-          {/* Limit For Single User + Maximum Discount Amount */}
+          {/* Limit + Max Discount */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Limit For Single User</label>
@@ -273,81 +267,58 @@ export default function AddCouponPage() {
                 onChange={handleChange}
                 placeholder="exm: 5"
                 min="1"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Discount Amount</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Maximum Discount Amount (AED)
+              </label>
               <input
                 type="number"
                 name="maxDiscountAmount"
                 value={form.maxDiscountAmount}
                 onChange={handleChange}
-                placeholder="exm: $300"
+                placeholder="exm: 300"
                 min="0"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                className={inputCls}
               />
             </div>
           </div>
 
-          {/* Start Date + Start Time */}
+          {/* Start */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Start Date <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                name="startDate"
-                value={form.startDate}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-              />
+              <input type="date" name="startDate" value={form.startDate} onChange={handleChange} className={inputCls} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Start Time <span className="text-red-500">*</span>
               </label>
-              <input
-                type="time"
-                name="startTime"
-                value={form.startTime}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-              />
+              <input type="time" name="startTime" value={form.startTime} onChange={handleChange} className={inputCls} />
             </div>
           </div>
 
-          {/* Expired Date + Expired Time */}
+          {/* Expiry */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Expired Date <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                name="expiryDate"
-                value={form.expiryDate}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-              />
+              <input type="date" name="expiryDate" value={form.expiryDate} onChange={handleChange} className={inputCls} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Expired Time <span className="text-red-500">*</span>
               </label>
-              <input
-                type="time"
-                name="expiryTime"
-                value={form.expiryTime}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-              />
+              <input type="time" name="expiryTime" value={form.expiryTime} onChange={handleChange} className={inputCls} />
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
           <button
             onClick={handleCancel}
@@ -359,22 +330,10 @@ export default function AddCouponPage() {
             onClick={handleSubmit}
             disabled={loading}
             className={`px-8 py-2 text-sm font-semibold text-white rounded-md transition ${
-              loading
-                ? "bg-green-400 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700 active:bg-green-800"
+              loading ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 active:bg-green-800"
             }`}
           >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                Submitting...
-              </span>
-            ) : (
-              "Submit"
-            )}
+            {loading ? "Submitting..." : "Submit"}
           </button>
         </div>
       </div>

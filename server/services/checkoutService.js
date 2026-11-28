@@ -1,9 +1,14 @@
 const Stripe = require('stripe');
+const { pool } = require('../config/db');
 const Cart = require('../models/User/Cart');
 const Product = require('../models/product_Management/Product');
 const Order = require('../models/Order');
 const PaymentSetting = require('../models/dependence/PaymentSetting');
+const Coupon = require('../models/Coupon');
+const DeliveryCharge = require('../models/DeliveryCharge');
+const Tax = require('../models/Tax');
 
+// ─── Errors & helpers ─────────────────────────────────────────────────────────
 class CheckoutError extends Error {
   constructor(message, status = 400) {
     super(message);
@@ -13,6 +18,24 @@ class CheckoutError extends Error {
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 const toMinor = (aed) => Math.round(Number(aed) * 100); // AED to fils
+
+// ─── coupon_usages table (for limitPerUser) ───────────────────────────────────
+const createCouponUsageTable = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS coupon_usages (
+      id         INT AUTO_INCREMENT PRIMARY KEY,
+      couponId   INT NOT NULL,
+      userId     INT NOT NULL,
+      orderId    INT NULL,
+      createdAt  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_coupon_user (couponId, userId),
+      FOREIGN KEY (couponId) REFERENCES coupons(id) ON DELETE CASCADE
+    )
+  `);
+};
+createCouponUsageTable().catch((err) =>
+  console.error('coupon_usages table init failed:', err)
+);
 
 // ─── Order items (buy-now or cart) ────────────────────────────────────────────
 const buildOrderItems = async ({ userId, body = {} }) => {
@@ -71,29 +94,109 @@ const buildOrderItems = async ({ userId, body = {} }) => {
   });
 };
 
-// ─── Pricing helpers: FILL THESE FROM YOUR EXISTING CODE ─────────────────────
-// Coupon, delivery and tax logic is not in the files shared so far.
-// Until these are filled in, any order with a coupon / delivery / tax will throw.
-
-const getCouponDiscount = async ({ userId, couponCode, subtotal }) => {
+// ─── Coupon ───────────────────────────────────────────────────────────────────
+// Used by both /api/coupon/validate (display) and order placement (final check).
+const getCouponDiscount = async ({ userId, couponCode, subtotal, items = [] }) => {
   if (!couponCode) return 0;
-  // TODO: validate coupon on the server (exists, active, not expired, min order,
-  // per-user usage limit). Percentage: min(subtotal * value / 100, maxDiscount).
-  // Fixed: value, but never more than subtotal.
-  throw new CheckoutError('Coupon validation is not implemented yet', 501);
+
+  const coupon = await Coupon.findOne({
+    couponCode: String(couponCode).trim().toUpperCase(),
+    isActive: true,
+  });
+  if (!coupon) throw new CheckoutError('Invalid coupon code', 400);
+
+  // Dates: start of start day, end of expiry day
+  const now = new Date();
+  const start = new Date(coupon.startDate);
+  start.setHours(0, 0, 0, 0);
+  if (now < start) throw new CheckoutError('Coupon is not active yet', 400);
+
+  const expiry = new Date(coupon.expiryDate);
+  expiry.setHours(23, 59, 59, 999);
+  if (now > expiry) throw new CheckoutError('Coupon expired', 400);
+
+  if (subtotal < Number(coupon.minOrderAmount)) {
+    throw new CheckoutError(`Min order should be AED${coupon.minOrderAmount}`, 400);
+  }
+
+  // New users: only if the user has no previous orders
+  if (coupon.applicableFor === 'New_User') {
+    const previousOrders = await Order.find({ user_id: userId });
+    if (previousOrders.length > 0) {
+      throw new CheckoutError('This coupon is only for first-time orders', 400);
+    }
+  }
+
+  // Per user limit
+  const limit = Number(coupon.limitPerUser) || 0;
+  if (limit > 0) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS used FROM coupon_usages WHERE couponId = ? AND userId = ?`,
+      [coupon.id, userId]
+    );
+    if (Number(rows[0].used) >= limit) {
+      throw new CheckoutError('You have already used this coupon', 400);
+    }
+  }
+
+  // Category specific: only items of that category are discounted
+  let eligibleSubtotal = subtotal;
+  if (coupon.applicableFor === 'Category_Specific') {
+    let eligible = 0;
+    for (const item of items) {
+      const product = await Product.findById(item.product);
+      // Confirm the category field name on your Product model (category_id or categoryId)
+      const catId = product?.category_id ?? product?.categoryId;
+      if (catId != null && Number(catId) === Number(coupon.category_id)) {
+        eligible += item.total;
+      }
+    }
+    if (eligible <= 0) {
+      throw new CheckoutError('Coupon is not valid for items in your cart', 400);
+    }
+    eligibleSubtotal = round2(eligible);
+  }
+
+  const value = Number(coupon.discountValue);
+  let discount;
+
+  if (coupon.discountType === 'Percentage') {
+    discount = (eligibleSubtotal * value) / 100;
+    const cap = Number(coupon.maxDiscountAmount);
+    if (cap > 0) discount = Math.min(discount, cap);
+  } else {
+    discount = value;
+  }
+
+  discount = Math.min(discount, eligibleSubtotal);
+  return round2(Math.max(0, discount));
 };
 
+// Called after an order is saved, so limitPerUser counts real orders.
+const recordCouponUsage = async ({ couponCode, userId, orderId }) => {
+  if (!couponCode) return;
+  const coupon = await Coupon.findOne({ couponCode: String(couponCode).toUpperCase() });
+  if (!coupon) return;
+  await pool.query(
+    `INSERT INTO coupon_usages (couponId, userId, orderId) VALUES (?, ?, ?)`,
+    [coupon.id, userId, orderId]
+  );
+};
+
+// ─── Delivery ─────────────────────────────────────────────────────────────────
+// Uses the subtotal before coupon discount, same as the checkout display.
+// If no range matches, delivery is 0. Change this line if you want a different rule.
 const getShippingCharge = async ({ subtotal }) => {
-  // TODO: use the same rule as /api/delivery/charge-for-price.
-  // Decide with the frontend whether delivery is based on subtotal or on
-  // subtotal after discount, and keep it the same everywhere.
-  throw new CheckoutError('Delivery charge calculation is not implemented yet', 501);
+  const row = await DeliveryCharge.findForPrice(subtotal);
+  return round2(row?.charge ?? 0);
 };
 
+// ─── Tax ──────────────────────────────────────────────────────────────────────
+// Sum of all active taxes, applied on the amount after coupon discount.
 const getTaxAmount = async ({ taxableAmount }) => {
-  // TODO: use active tax rates from your tax model. Apply on taxableAmount
-  // (subtotal after discount), the same as the frontend display.
-  throw new CheckoutError('Tax calculation is not implemented yet', 501);
+  const taxes = await Tax.find({ isActive: true });
+  const rate = taxes.reduce((sum, t) => sum + Number(t.percentage), 0);
+  return round2((taxableAmount * rate) / 100);
 };
 
 // ─── Single source of truth for the order total ──────────────────────────────
@@ -101,10 +204,15 @@ const calculateOrderTotalOnServer = async ({ userId, body = {} }) => {
   const items = await buildOrderItems({ userId, body });
 
   const subtotal = round2(items.reduce((s, i) => s + i.total, 0));
-  const couponDiscount = round2(await getCouponDiscount({ userId, couponCode: body.couponCode, subtotal }));
+  const couponDiscount = await getCouponDiscount({
+    userId,
+    couponCode: body.couponCode,
+    subtotal,
+    items,
+  });
   const taxableAmount = round2(Math.max(0, subtotal - couponDiscount));
-  const shippingCharge = round2(await getShippingCharge({ subtotal }));
-  const tax = round2(await getTaxAmount({ taxableAmount }));
+  const shippingCharge = await getShippingCharge({ subtotal });
+  const tax = await getTaxAmount({ taxableAmount });
   const amount = round2(taxableAmount + shippingCharge + tax);
 
   return { items, subtotal, couponDiscount, taxableAmount, shippingCharge, tax, amount };
@@ -133,8 +241,6 @@ const verifyStripeIntent = async ({ intentId, userId, amount }) => {
 };
 
 // ─── Called from the Stripe webhook on payment_intent.succeeded ──────────────
-// If the order does not exist yet (browser closed before placeOrder),
-// this does nothing. placeOrder verifies the intent itself, so it is safe.
 const markPaymentSucceeded = async (intent) => {
   const order = await Order.findOne({ stripePaymentIntentId: intent.id });
   if (!order) return null;
@@ -145,6 +251,8 @@ const markPaymentSucceeded = async (intent) => {
 module.exports = {
   CheckoutError,
   buildOrderItems,
+  getCouponDiscount,
+  recordCouponUsage,
   calculateOrderTotalOnServer,
   verifyStripeIntent,
   markPaymentSucceeded,

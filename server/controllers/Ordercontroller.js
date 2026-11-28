@@ -1,7 +1,6 @@
 const Order = require('../models/Order');
 const Cart = require('../models/User/Cart');
 const User = require('../models/User/User');
-const Product = require('../models/product_Management/Product');
 const sendSms = require('../utils/sendSms');
 const { orderPlacedEmail, orderStatusEmail, riderAssignedEmail, driverAssignedEmail } = require('../utils/emailTemplates');
 const sendNotification = require('../utils/sendNotification');
@@ -10,6 +9,7 @@ const {
   CheckoutError,
   calculateOrderTotalOnServer,
   verifyStripeIntent,
+  recordCouponUsage,
 } = require('../services/checkoutService');
 
 // ─── Snapshot Address ─────────────────────────────────────────────────────────
@@ -28,7 +28,8 @@ const snapshotAddress = (addr) => ({
 
 // ─── Place Order ──────────────────────────────────────────────────────────────
 // Client sends only: addressId, paymentMethod, note, couponCode, stripePaymentIntentId,
-// and buy-now fields. All amounts are calculated on the server.
+// and buy-now fields (buyNow, productId, quantity, variantId).
+// Every amount is calculated on the server.
 exports.placeOrder = async (req, res) => {
   try {
     const {
@@ -37,6 +38,8 @@ exports.placeOrder = async (req, res) => {
       note = '',
       couponCode = null,
       stripePaymentIntentId = null,
+      buyNow = false,
+      productId = null,
     } = req.body;
 
     if (!['COD', 'Card'].includes(paymentMethod)) {
@@ -56,11 +59,11 @@ exports.placeOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No delivery address found. Please add one.' });
     }
 
-    // ── 2. Server-side pricing (same function used for the PaymentIntent) ─
+    // ── 2. Server-side pricing (same function used for the PaymentIntent) ──
     const { items, subtotal, couponDiscount, shippingCharge, tax, amount } =
       await calculateOrderTotalOnServer({ userId: req.user.id, body: req.body });
 
-    // ── 3. Card: verify the Stripe payment before saving the order ───────
+    // ── 3. Card: verify the Stripe payment before saving the order ────────
     let paymentStatus = 'Pending';
 
     if (paymentMethod === 'Card') {
@@ -70,7 +73,6 @@ exports.placeOrder = async (req, res) => {
         amount,
       });
 
-      // Same PaymentIntent must not create two orders
       const alreadyUsed = await Order.findOne({ stripePaymentIntentId });
       if (alreadyUsed) {
         return res.status(409).json({
@@ -102,7 +104,7 @@ exports.placeOrder = async (req, res) => {
         estimatedDeliveryAt: null,
       });
     } catch (err) {
-      // Two requests with the same intent hit the UNIQUE constraint
+      // Same PaymentIntent sent twice at the same time hits the UNIQUE constraint
       if (err.code === 'ER_DUP_ENTRY') {
         return res.status(409).json({
           success: false,
@@ -112,16 +114,21 @@ exports.placeOrder = async (req, res) => {
       throw err;
     }
 
-    // ── 5. Clear cart (not for buy-now) ───────────────────────────────────
-    const buyNow = !!req.body.buyNow && !!req.body.productId;
-    if (!buyNow) {
+    // ── 5. Record coupon usage (for limitPerUser) ─────────────────────────
+    if (couponCode && couponDiscount > 0) {
+      await recordCouponUsage({ couponCode, userId: req.user.id, orderId: order.id });
+    }
+
+    // ── 6. Clear cart (not for buy-now) ───────────────────────────────────
+    const isBuyNow = !!buyNow && !!productId;
+    if (!isBuyNow) {
       await Cart.clearByUser(req.user.id);
     }
 
-    // ── 6. Respond ────────────────────────────────────────────────────────
+    // ── 7. Respond ────────────────────────────────────────────────────────
     res.status(201).json({ success: true, message: 'Order placed successfully!', order });
 
-    // ── 7. Background notifications ───────────────────────────────────────
+    // ── 8. Background notifications ───────────────────────────────────────
     fireAndForget(async () => {
       const { subject, html } = orderPlacedEmail(user.fullName, order.id, amount, paymentMethod);
       const message = `Hello ${user.name}! Order #${order.id} placed. Total: AED${amount}. – OrchardEngine`;
@@ -187,7 +194,6 @@ exports.cancelOrder = async (req, res) => {
     }
 
     const user = await User.findById(order.user_id);
-
     const cancelledAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const updated = await Order.findByIdAndUpdate(Number(req.params.id), {
@@ -207,7 +213,6 @@ exports.cancelOrder = async (req, res) => {
         await sendSms(user.phone, smsMessage);
       }
     }, 'cancel-order-sms');
-
   } catch (err) {
     console.error('[PATCH /cancel]', err.message);
     res.status(500).json({ success: false, message: err.message });
@@ -333,7 +338,6 @@ exports.adminUpdateOrderStatus = async (req, res) => {
         await sendSms(customer.phone, smsMessage);
       }
     }, 'order-status-update-notifications');
-
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -425,7 +429,6 @@ exports.adminAssignRider = async (req, res) => {
         await sendSms(driver.phone, driverSms);
       }
     }, 'assign-rider-notifications');
-
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -466,7 +469,6 @@ exports.adminSetDeliveryEstimate = async (req, res) => {
 
     const updated = await Order.findById(req.params.id);
     res.json({ success: true, order: updated });
-
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

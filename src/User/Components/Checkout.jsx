@@ -183,7 +183,7 @@ function OrderSuccess({ order, onDone }) {
         </h2>
         <p style={{ margin: "0 0 4px", fontSize: 14, color: "#6b7280" }}>Your order has been confirmed.</p>
         <p style={{ margin: "0 0 24px", fontSize: 13, fontWeight: 700, color: "#16a34a" }}>
-          #{order?.orderNumber || "Processing…"}
+          #{order?.orderNumber || order?.id || "Processing…"}
         </p>
         <div style={{ background: "#f8faf8", borderRadius: 14, padding: "16px 18px", marginBottom: 24, textAlign: "left" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
@@ -381,8 +381,7 @@ function CouponSection({
   );
 }
 
-// ─── Stripe card form (lives inside <Elements>) ───────────────────────────────
-// Exposes confirm() to the parent through ref, so the parent Place Order button can use it.
+// ─── Stripe card form (inside <Elements>) ─────────────────────────────────────
 const StripePaymentForm = forwardRef(function StripePaymentForm(_props, ref) {
   const stripe = useStripe();
   const elements = useElements();
@@ -495,6 +494,11 @@ export default function Checkout() {
   const buyNowQty = parseInt(searchParams.get("qty") || "1", 10);
   const buyNowVariantId = searchParams.get("variantId") || null;
   const isBuyNow = !!buyNowProductId;
+
+  // Same shape the server uses to rebuild items (coupon validate + place order)
+  const buyNowBody = isBuyNow
+    ? { buyNow: true, productId: buyNowProductId, quantity: buyNowQty, variantId: buyNowVariantId }
+    : {};
 
   const [cartItems, setCartItems] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -625,13 +629,8 @@ export default function Checkout() {
   }, [cartItems]);
 
   // ── Create Stripe PaymentIntent when Card is selected ──────────────────────
-  // Recreated when address, coupon or item selection changes, so the amount stays correct.
   useEffect(() => {
     if (paymentMethod !== "Card" || !selectedAddressId || loading || cartItems.length === 0) return;
-
-    const buyNowBody = isBuyNow
-      ? { buyNow: true, productId: buyNowProductId, quantity: buyNowQty, variantId: buyNowVariantId }
-      : {};
 
     let cancelled = false;
     setStripeLoading(true);
@@ -656,12 +655,12 @@ export default function Checkout() {
       .finally(() => { if (!cancelled) setStripeLoading(false); });
 
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     paymentMethod, selectedAddressId, couponApplied?.couponCode, loading,
     cartItems.length, isBuyNow, buyNowProductId, buyNowQty, buyNowVariantId,
   ]);
 
-  // Load Stripe.js once per publishable key
   const stripePromise = useMemo(
     () => (stripeKey ? loadStripe(stripeKey) : null),
     [stripeKey]
@@ -675,9 +674,15 @@ export default function Checkout() {
 
   const couponDiscount = couponApplied
     ? couponApplied.discountType === "Percentage"
-      ? Math.min((subtotal * couponApplied.discountValue) / 100, couponApplied.maxDiscount || Infinity)
-      : couponApplied.discountValue
+      ? Math.min(
+          (subtotal * Number(couponApplied.discountValue)) / 100,
+          Number(couponApplied.maxDiscountAmount) > 0
+            ? Number(couponApplied.maxDiscountAmount)
+            : Infinity
+        )
+      : Math.min(Number(couponApplied.discountValue), subtotal)
     : 0;
+
   const taxableAmount = Math.max(0, subtotal - couponDiscount);
   const tax = parseFloat(((taxableAmount * taxRate) / 100).toFixed(2));
   const total = Math.max(0, taxableAmount + shippingCharge + tax);
@@ -694,9 +699,12 @@ export default function Checkout() {
     setCouponLoading(true);
     setCouponError("");
     try {
-      const data = await api.coupon({ code: couponCode.trim(), orderAmount: subtotal });
-      if (data.success) setCouponApplied(data.coupon);
-      else setCouponError(data.message || "Invalid coupon");
+      const data = await api.coupon({ code: couponCode.trim(), ...buyNowBody });
+      if (data.success) {
+        setCouponApplied(data.coupon);
+      } else {
+        setCouponError(data.message || "Invalid coupon");
+      }
     } catch {
       setCouponError("Failed to validate coupon");
     } finally {
@@ -722,10 +730,6 @@ export default function Checkout() {
     setError("");
     setPlacing(true);
 
-    const buyNowPayload = isBuyNow
-      ? { buyNow: true, productId: buyNowProductId, quantity: buyNowQty, variantId: buyNowVariantId ?? undefined }
-      : {};
-
     try {
       let stripePaymentIntentId = null;
 
@@ -741,7 +745,7 @@ export default function Checkout() {
         stripePaymentIntentId,
         note,
         couponCode: couponApplied?.couponCode || null,
-        ...buyNowPayload,
+        ...buyNowBody,
       });
 
       if (orderRes.success) {

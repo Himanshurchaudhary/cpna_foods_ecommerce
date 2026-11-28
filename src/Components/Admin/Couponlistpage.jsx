@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
-const API_BASEA = import.meta.env.VITE_API_URL;
 
-const API_BASE_URL = `${API_BASEA}/api/coupon`; // Update to your backend URL
+const API_BASEA = import.meta.env.VITE_API_URL;
+const API_BASE_URL = `${API_BASEA}/api/coupon`;
 const CATEGORIES_API = `${API_BASEA}/api/Category/all`;
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+const inputCls =
+  "w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition";
 
 function formatDateTime(date, time) {
   if (!date) return "—";
   const d = new Date(date);
-  const options = { month: "short", day: "2-digit", year: "numeric" };
-  const datePart = d.toLocaleDateString("en-US", options);
+  const datePart = d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
   return time ? `${datePart} ${time}` : datePart;
+}
+
+function formatDiscount(c) {
+  return c.discountType === "Percentage" ? `${c.discountValue}%` : `AED ${c.discountValue}`;
 }
 
 function authHeaders() {
@@ -22,7 +26,15 @@ function authHeaders() {
   };
 }
 
-// ─── Edit Modal ──────────────────────────────────────────────────────────────
+const SelectArrow = () => (
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+);
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
 
 function EditModal({ coupon, categories, onClose, onUpdated }) {
   const [form, setForm] = useState({
@@ -33,7 +45,7 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
     limitPerUser: coupon.limitPerUser ?? "",
     maxDiscountAmount: coupon.maxDiscountAmount ?? "",
     applicableFor: coupon.applicableFor || "All",
-    category: coupon.category?.id || coupon.category || "",
+    category: coupon.category?.id || "",
     startDate: coupon.startDate ? coupon.startDate.slice(0, 10) : "",
     startTime: coupon.startTime || "",
     expiryDate: coupon.expiryDate ? coupon.expiryDate.slice(0, 10) : "",
@@ -42,11 +54,13 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleChange = (e) =>
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async () => {
-    const required = ["couponCode", "discountType", "discountValue", "minOrderAmount", "startDate", "startTime", "expiryDate", "expiryTime"];
+    const required = [
+      "couponCode", "discountType", "discountValue", "minOrderAmount",
+      "startDate", "startTime", "expiryDate", "expiryTime",
+    ];
     for (const f of required) {
       if (!form[f] && form[f] !== 0) {
         setError("Please fill in all required fields.");
@@ -62,14 +76,14 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
     setLoading(true);
     try {
       const payload = {
-        couponCode: form.couponCode.toUpperCase(),
+        couponCode: form.couponCode.trim().toUpperCase(),
         discountType: form.discountType,
         discountValue: Number(form.discountValue),
         minOrderAmount: Number(form.minOrderAmount),
         limitPerUser: form.limitPerUser ? Number(form.limitPerUser) : 1,
-        maxDiscountAmount: form.maxDiscountAmount ? Number(form.maxDiscountAmount) : undefined,
+        maxDiscountAmount: form.maxDiscountAmount ? Number(form.maxDiscountAmount) : null,
         applicableFor: form.applicableFor,
-        category: form.applicableFor === "Category_Specific" ? form.category : undefined,
+        category: form.applicableFor === "Category_Specific" ? form.category : null,
         startDate: form.startDate,
         startTime: form.startTime,
         expiryDate: form.expiryDate,
@@ -94,36 +108,26 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
     }
   };
 
-  const SelectArrow = () => (
-    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  );
-
-  const inputCls = "w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition";
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-3xl bg-white rounded-xl shadow-xl max-h-[92vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-200">
-          <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
           <h2 className="text-lg font-semibold text-gray-800">Edit Promo Code</h2>
         </div>
 
         <div className="px-6 py-6 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2 rounded-md">{error}</div>
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2 rounded-md">
+              {error}
+            </div>
           )}
 
           {/* Applicable For + Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Applicable For <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Applicable For <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <select name="applicableFor" value={form.applicableFor} onChange={handleChange} className={`${inputCls} appearance-none bg-white`}>
                   <option value="All">All</option>
@@ -135,7 +139,9 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
             </div>
             {form.applicableFor === "Category_Specific" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category <span className="text-red-500">*</span>
+                </label>
                 <div className="relative">
                   <select name="category" value={form.category} onChange={handleChange} className={`${inputCls} appearance-none bg-white`}>
                     <option value="">Select a category</option>
@@ -149,14 +155,18 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
             )}
           </div>
 
-          {/* Voucher Code + Discount Type */}
+          {/* Code + Type */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Code <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Voucher Code <span className="text-red-500">*</span>
+              </label>
               <input type="text" name="couponCode" value={form.couponCode} onChange={handleChange} className={`${inputCls} uppercase`} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Discount Type <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <select name="discountType" value={form.discountType} onChange={handleChange} className={`${inputCls} appearance-none bg-white`}>
                   <option value="Amount">Amount</option>
@@ -167,70 +177,81 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
             </div>
           </div>
 
-          {/* Discount + Min Order */}
+          {/* Discount + Min */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Discount <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Discount <span className="text-red-500">*</span>
+              </label>
               <input type="number" name="discountValue" value={form.discountValue} onChange={handleChange} min="0" className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Order Amount <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Minimum Order Amount (AED) <span className="text-red-500">*</span>
+              </label>
               <input type="number" name="minOrderAmount" value={form.minOrderAmount} onChange={handleChange} min="0" className={inputCls} />
             </div>
           </div>
 
-          {/* Limit + Max Discount */}
+          {/* Limit + Max */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Limit For Single User</label>
               <input type="number" name="limitPerUser" value={form.limitPerUser} onChange={handleChange} min="1" placeholder="exm: 5" className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Discount Amount</label>
-              <input type="number" name="maxDiscountAmount" value={form.maxDiscountAmount} onChange={handleChange} min="0" placeholder="exm: $300" className={inputCls} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Maximum Discount Amount (AED)
+              </label>
+              <input type="number" name="maxDiscountAmount" value={form.maxDiscountAmount} onChange={handleChange} min="0" placeholder="exm: 300" className={inputCls} />
             </div>
           </div>
 
-          {/* Start Date + Start Time */}
+          {/* Start */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date <span className="text-red-500">*</span>
+              </label>
               <input type="date" name="startDate" value={form.startDate} onChange={handleChange} className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Time <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Time <span className="text-red-500">*</span>
+              </label>
               <input type="time" name="startTime" value={form.startTime} onChange={handleChange} className={inputCls} />
             </div>
           </div>
 
-          {/* Expiry Date + Expiry Time */}
+          {/* Expiry */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expired Date <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Expired Date <span className="text-red-500">*</span>
+              </label>
               <input type="date" name="expiryDate" value={form.expiryDate} onChange={handleChange} className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expired Time <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Expired Time <span className="text-red-500">*</span>
+              </label>
               <input type="time" name="expiryTime" value={form.expiryTime} onChange={handleChange} className={inputCls} />
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
           <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition">
             Cancel
           </button>
-          <button onClick={handleSubmit} disabled={loading} className={`px-8 py-2 text-sm font-semibold text-white rounded-md transition ${loading ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}>
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                Updating...
-              </span>
-            ) : "Update"}
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className={`px-8 py-2 text-sm font-semibold text-white rounded-md transition ${
+              loading ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {loading ? "Updating..." : "Update"}
           </button>
         </div>
       </div>
@@ -238,7 +259,7 @@ function EditModal({ coupon, categories, onClose, onUpdated }) {
   );
 }
 
-// ─── Delete Confirm Modal ────────────────────────────────────────────────────
+// ─── Delete Modal ─────────────────────────────────────────────────────────────
 
 function DeleteModal({ coupon, onClose, onDeleted }) {
   const [loading, setLoading] = useState(false);
@@ -251,11 +272,9 @@ function DeleteModal({ coupon, onClose, onDeleted }) {
         headers: authHeaders(),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        onDeleted(coupon.id);
-      }
+      if (res.ok && data.success) onDeleted(coupon.id);
     } catch {
-      // handle silently
+      // silent
     } finally {
       setLoading(false);
     }
@@ -266,7 +285,8 @@ function DeleteModal({ coupon, onClose, onDeleted }) {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
         <h3 className="text-base font-semibold text-gray-800 mb-2">Delete Promo Code</h3>
         <p className="text-sm text-gray-500 mb-6">
-          Are you sure you want to delete <span className="font-semibold text-gray-700">{coupon.couponCode}</span>? This action cannot be undone.
+          Are you sure you want to delete{" "}
+          <span className="font-semibold text-gray-700">{coupon.couponCode}</span>? This action cannot be undone.
         </p>
         <div className="flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition">
@@ -281,7 +301,7 @@ function DeleteModal({ coupon, onClose, onDeleted }) {
   );
 }
 
-// ─── Toggle Switch ───────────────────────────────────────────────────────────
+// ─── Toggle ───────────────────────────────────────────────────────────────────
 
 function Toggle({ checked, onChange }) {
   return (
@@ -294,9 +314,9 @@ function Toggle({ checked, onChange }) {
   );
 }
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function CouponListPage({ onCreateNew }) {
+export default function CouponListPage() {
   const [coupons, setCoupons] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -309,7 +329,6 @@ export default function CouponListPage({ onCreateNew }) {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Fetch coupons
   useEffect(() => {
     const fetchCoupons = async () => {
       try {
@@ -325,19 +344,19 @@ export default function CouponListPage({ onCreateNew }) {
     fetchCoupons();
   }, []);
 
-  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch(CATEGORIES_API, { headers: authHeaders() });
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : data.categories || []);
-      } catch { /* silent */ }
+      } catch {
+        // silent
+      }
     };
     fetchCategories();
   }, []);
 
-  // Toggle active status
   const handleToggle = async (coupon) => {
     try {
       const res = await fetch(`${API_BASE_URL}/${coupon.id}/toggle`, {
@@ -369,17 +388,12 @@ export default function CouponListPage({ onCreateNew }) {
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
-      {/* Toast */}
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${toast.type === "success" ? "bg-green-600" : "bg-red-500"}`}>
           {toast.message}
         </div>
       )}
 
-      {/* Page header */}
-    
-
-      {/* Table card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -406,20 +420,15 @@ export default function CouponListPage({ onCreateNew }) {
               coupons.map((coupon) => (
                 <tr key={coupon.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition">
                   <td className="px-5 py-4 text-gray-800 font-medium">{coupon.couponCode}</td>
-                  <td className="px-5 py-4 text-gray-600">
-                    {coupon.discountType === "Percentage"
-                      ? `${coupon.discountValue}%`
-                      : `$${coupon.discountValue}`}
-                  </td>
-                  <td className="px-5 py-4 text-gray-600">${coupon.minOrderAmount}</td>
+                  <td className="px-5 py-4 text-gray-600">{formatDiscount(coupon)}</td>
+                  <td className="px-5 py-4 text-gray-600">AED {coupon.minOrderAmount}</td>
                   <td className="px-5 py-4 text-gray-600">{formatDateTime(coupon.startDate, coupon.startTime)}</td>
                   <td className="px-5 py-4 text-gray-600">{formatDateTime(coupon.expiryDate, coupon.expiryTime)}</td>
                   <td className="px-5 py-4">
-                    <Toggle checked={coupon.isActive} onChange={() => handleToggle(coupon)} />
+                    <Toggle checked={!!coupon.isActive} onChange={() => handleToggle(coupon)} />
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
-                      {/* Edit */}
                       <button
                         onClick={() => setEditCoupon(coupon)}
                         className="p-1.5 rounded-md border border-blue-200 text-blue-500 hover:bg-blue-50 transition"
@@ -429,7 +438,6 @@ export default function CouponListPage({ onCreateNew }) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
                       </button>
-                      {/* Delete */}
                       <button
                         onClick={() => setDeleteCoupon(coupon)}
                         className="p-1.5 rounded-md border border-red-200 text-red-400 hover:bg-red-50 transition"
@@ -448,7 +456,6 @@ export default function CouponListPage({ onCreateNew }) {
         </table>
       </div>
 
-      {/* Edit Modal */}
       {editCoupon && (
         <EditModal
           coupon={editCoupon}
@@ -458,7 +465,6 @@ export default function CouponListPage({ onCreateNew }) {
         />
       )}
 
-      {/* Delete Confirm Modal */}
       {deleteCoupon && (
         <DeleteModal
           coupon={deleteCoupon}
