@@ -82,7 +82,7 @@ const createOrderTables = async () => {
     `);
 };
 
-createOrderTables();
+createOrderTables().catch((err) => console.error('order tables init failed:', err));
 
 // ─── Shape helpers ────────────────────────────────────────────────────────────
 
@@ -137,7 +137,7 @@ const shape = (row, items = [], statusHistory = []) => {
         delete row.user_phone;
     }
 
-    // ✅ Naya — Date object aur string dono handle karta hai
+    // Date object and string both handled
     const dateFields = [
         'estimatedDeliveryAt', 'deliveredAt', 'cancelledAt',
         'pickedUpAt', 'createdAt', 'updatedAt'
@@ -145,16 +145,13 @@ const shape = (row, items = [], statusHistory = []) => {
     dateFields.forEach(field => {
         if (!row[field]) return;
         if (row[field] instanceof Date) {
-            // MySQL2 Date object — already correct UTC
             row[field] = row[field].toISOString();
         } else if (typeof row[field] === 'string' && !row[field].endsWith('Z')) {
-            // String hai — Z append karo UTC force ke liye
             row[field] = row[field].replace(' ', 'T') + 'Z';
         }
     });
 
     row.items = items;
-
     row.statusHistory = statusHistory;
     return row;
 };
@@ -188,6 +185,7 @@ const fetchItems = async (orderId) => {
     );
     return rows;
 };
+
 const fetchStatusHistory = async (orderId) => {
     const [rows] = await pool.query(
         `SELECT * FROM order_status_history WHERE order_id = ? ORDER BY changedAt ASC`,
@@ -222,32 +220,40 @@ const Order = {
             couponCode, couponDiscount, shippingAddress: a,
             paymentMethod, paymentStatus,
             razorpayOrderId, razorpayPaymentId,
+            stripePaymentIntentId,
             note, assignedDriver, estimatedDeliveryAt,
         } = data;
 
         const orderNumber = await generateOrderNumber();
 
-        const [result] = await pool.query(`
-            INSERT INTO orders (
-                user_id, orderNumber, subtotal, discount, shippingCharge, tax, total,
-                couponCode, couponDiscount,
-                addr_name, addr_phone, addr_altPhone, addr_house, addr_road,
-                addr_city, addr_state, addr_pincode, addr_landmark, addr_type,
-                paymentMethod, paymentStatus,
-                razorpayOrderId, razorpayPaymentId,
-                note, assignedDriver_id,
-                estimatedDeliveryAt
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
+        const columns = [
+            'user_id', 'orderNumber', 'subtotal', 'discount', 'shippingCharge', 'tax', 'total',
+            'couponCode', 'couponDiscount',
+            'addr_name', 'addr_phone', 'addr_altPhone', 'addr_house', 'addr_road',
+            'addr_city', 'addr_state', 'addr_pincode', 'addr_landmark', 'addr_type',
+            'paymentMethod', 'paymentStatus',
+            'razorpayOrderId', 'razorpayPaymentId', 'stripePaymentIntentId',
+            'note', 'assignedDriver_id',
+            'estimatedDeliveryAt',
+        ];
+
+        const values = [
             user, orderNumber, subtotal, discount ?? 0, shippingCharge ?? 0, tax ?? 0, total,
             couponCode ?? null, couponDiscount ?? 0,
             a.name, a.phone, a.altPhone ?? '', a.house, a.road,
             a.city, a.state, a.pincode, a.landmark ?? '', a.type ?? 'Home',
             paymentMethod ?? 'COD', paymentStatus ?? 'Pending',
-            razorpayOrderId ?? null, razorpayPaymentId ?? null,
+            razorpayOrderId ?? null, razorpayPaymentId ?? null, stripePaymentIntentId ?? null,
             note ?? '', assignedDriver ?? null,
-            estimatedDeliveryAt ?? null,  // ← ADD
-        ]);
+            estimatedDeliveryAt ?? null,
+        ];
+
+        const placeholders = columns.map(() => '?').join(', ');
+
+        const [result] = await pool.query(
+            `INSERT INTO orders (${columns.join(', ')}) VALUES (${placeholders})`,
+            values
+        );
 
         const orderId = result.insertId;
 
@@ -361,13 +367,11 @@ const Order = {
 
         const offset = (Number(page) - 1) * Number(limit);
 
-        // Count query (no pagination)
         const [[{ total }]] = await pool.query(
             `SELECT COUNT(*) AS total FROM orders o LEFT JOIN users u ON o.user_id = u.id ${whereSQL}`,
             vals
         );
 
-        // Data query
         const [rows] = await pool.query(
             `${BASE_SELECT} ${whereSQL} ORDER BY ${safeSortBy} ${safeSortOrder} LIMIT ? OFFSET ?`,
             [...vals, Number(limit), offset]
@@ -404,8 +408,3 @@ const Order = {
 };
 
 module.exports = Order;
-
-
-
-// ALTER TABLE orders
-// ADD COLUMN IF NOT EXISTS estimatedDeliveryAt DATETIME DEFAULT NULL;
